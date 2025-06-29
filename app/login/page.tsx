@@ -7,15 +7,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Briefcase, AlertCircle } from "lucide-react"
-import Parse from 'parse' // Import the Parse SDK
+import { Briefcase, AlertCircle, Eye, EyeOff } from "lucide-react"
+import Parse from 'parse'
 
-// Initialize Parse with your Back4App credentials
-// It's generally better to do this in a higher-level component like _app.tsx
-// or a dedicated utility file to avoid re-initialization.
-if (!Parse.applicationId) { // Prevent re-initialization if hot-reloading
+if (!Parse.applicationId) {
   Parse.initialize("QGvrhwxOhWwRe1ljUk4uyWj7UA7xjxEDwP1vhdsw", "jh0aKxm3H9f62YisAgvLDI1cpF7DfIySlXgwGjcS");
-  Parse.serverURL = 'https://parseapi.back4app.com/'; // Standard Back4App server URL
+  Parse.serverURL = 'https://parseapi.back4app.com/';
 }
 
 export default function LoginPage() {
@@ -24,12 +21,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError("")
 
-    // Basic validation
     if (!email || !password) {
       setError("Please enter both email and password")
       return
@@ -43,29 +40,33 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      // Authenticating with Back4App using Parse.User.logIn().
-      // This method authenticates against the built-in '_User' class.
-      // Your 'Employees' schema's 'Email' and 'Password' fields are assumed
-      // to correspond to the email and password used for the '_User' class.
-      // Ensure 'Email Login' is enabled for the '_User' class in your Back4App dashboard
-      // if you intend to use email addresses for login.
-      const user = await Parse.User.logIn(email, password);
-      console.log('User logged in successfully:', user);
+      const user = await Parse.User.logIn(email, password)
+      console.log("User logged in successfully:", user)
 
-      // Keep this localStorage item for backward compatibility with your dashboard's initial check,
-      // although Parse SDK handles session management internally using current user.
-      localStorage.setItem("inventureLoggedIn", "true");
+      localStorage.setItem("inventureLoggedIn", "true")
 
-      // Redirect to dashboard on successful login
-      router.push("/dashboard")
+      // Fetch the current user to ensure access to custom fields
+      const currentUser = await Parse.User.currentAsync()
+      const accessLevel = currentUser?.get("Acess_level")
+
+      console.log("User access level:", accessLevel)
+
+      if (accessLevel === "Admin") {
+        router.push("/dashboard")
+      } else {
+        router.push("/employee-dashboard")
+      }
+
     } catch (parseError) {
-      // Handle Parse errors (e.g., wrong credentials, network issues).
-      // parseError.message will contain the specific error from Back4App.
-      console.error('Error during Back4App login:', parseError);
-      setError(parseError.message || "An unexpected error occurred during login. Please try again.");
+      console.error("Error during Back4App login:", parseError)
+      setError(parseError.message || "An unexpected error occurred during login. Please try again.")
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const togglePasswordVisibility = () => {
+    setShowPassword((prev) => !prev)
   }
 
   return (
@@ -111,14 +112,26 @@ export default function LoginPage() {
                     Forgot password?
                   </Button>
                 </div>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={togglePasswordVisibility}
+                    className="absolute inset-y-0 right-0 h-full px-3 flex items-center justify-center"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                  </Button>
+                </div>
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>

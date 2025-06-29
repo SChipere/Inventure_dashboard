@@ -10,11 +10,6 @@ const APP_ID = 'QGvrhwxOhWwRe1ljUk4uyWj7UA7xjxEDwP1vhdsw';
 const JAVASCRIPT_KEY = 'jh0aKxm3H9f62YisAgvLDI1cpF7DfIySlXgwGjcS';
 const SERVER_URL = 'https://parseapi.back4app.com/'; // Your Back4App server URL
 
-// Admin credentials (FOR DEVELOPMENT/DEMO ONLY - DO NOT USE IN PRODUCTION AS IS)
-// You MUST replace these with secure environment variables or a proper authentication flow
-const ADMIN_USERNAME = 'your_admin_username'; // <--- REPLACE THIS WITH YOUR ADMIN USERNAME
-const ADMIN_PASSWORD = 'your_admin_password'; // <--- REPLACE THIS WITH YOUR ADMIN PASSWORD
-
 // Check if Parse is already initialized to prevent re-initialization warnings
 if (!(Parse as any)._initializeHasRun) {
   Parse.initialize(APP_ID, JAVASCRIPT_KEY);
@@ -39,6 +34,15 @@ export type CreateUserData = {
   Acess_level?: string;
 };
 
+export type UpdateUserData = {
+  objectId: string; // Required for updating
+  username?: string;
+  email?: string;
+  password?: string; // Only if changing password
+  Acess_level?: string;
+  emailVerified?: boolean;
+};
+
 export type NotificationData = {
   title: string;
   message: string;
@@ -46,36 +50,15 @@ export type NotificationData = {
 };
 
 /**
- * Attempts to log in an admin user to establish a session.
- * This is crucial for operations that require authentication.
- * @returns A promise that resolves to the logged-in Parse.User object.
- */
-export async function loginAdmin(): Promise<Parse.User> {
-  try {
-    const user = await Parse.User.logIn(ADMIN_USERNAME, ADMIN_PASSWORD);
-    console.log('Admin user logged in:', user.get('username'));
-    return user;
-  } catch (error) {
-    console.error('Error logging in admin:', error);
-    throw new Error(`Failed to log in admin: ${error instanceof Error ? error.message : String(error)}`);
-  }
-}
-
-/**
  * Fetches all users from the Back4App _User class.
- * Ensures an admin session is active before fetching.
+ * This function relies on an existing Parse session or public read permissions.
  * @returns A promise that resolves to an array of AdminUser objects.
  */
 export async function fetchAllUsers(): Promise<AdminUser[]> {
   try {
-    // Ensure admin is logged in before making requests that might require authentication
-    // In a real app, you'd manage sessions more robustly (e.g., check current session first)
-    if (!Parse.User.current()) {
-      await loginAdmin(); // Attempt to log in if no current user
-    }
-
     const query = new Parse.Query(Parse.User);
     query.descending('createdAt'); // Order by creation date, newest first
+    // Limit and skip for pagination could be added here if needed for large datasets
     const parseUsers = await query.find();
 
     return parseUsers.map((parseUser) => ({
@@ -95,16 +78,11 @@ export async function fetchAllUsers(): Promise<AdminUser[]> {
 
 /**
  * Creates a new user in the Back4App _User class.
- * Ensures an admin session is active before creating a user.
+ * This function relies on an existing Parse session with create permissions.
  * @param userData The data for the new user.
  * @returns A promise that resolves to the created AdminUser object.
  */
 export async function createUser(userData: CreateUserData): Promise<AdminUser> {
-  // Ensure admin is logged in before creating a user
-  if (!Parse.User.current()) {
-    await loginAdmin();
-  }
-
   const { username, email, password, Acess_level } = userData;
   const user = new Parse.User();
 
@@ -135,16 +113,56 @@ export async function createUser(userData: CreateUserData): Promise<AdminUser> {
 }
 
 /**
+ * Updates an existing user in the Back4App _User class.
+ * This function relies on an existing Parse session with update permissions.
+ * @param userData The data for the user to update, including objectId.
+ * @returns A promise that resolves to the updated AdminUser object.
+ */
+export async function updateUser(userData: UpdateUserData): Promise<AdminUser> {
+  try {
+    const query = new Parse.Query(Parse.User);
+    const userToUpdate = await query.get(userData.objectId); // Fetch the user object by objectId
+
+    if (userData.username) {
+      userToUpdate.set('username', userData.username);
+    }
+    if (userData.email) {
+      userToUpdate.set('email', userData.email);
+    }
+    if (userData.password) {
+      userToUpdate.set('password', userData.password); // Only set if a new password is provided
+    }
+    if (userData.Acess_level) {
+      userToUpdate.set('Acess_level', userData.Acess_level);
+    }
+    if (typeof userData.emailVerified === 'boolean') {
+      userToUpdate.set('emailVerified', userData.emailVerified);
+    }
+
+    const updatedUser = await userToUpdate.save(); // Save the changes
+
+    return {
+      objectId: updatedUser.id,
+      username: updatedUser.get('username'),
+      email: updatedUser.get('email'),
+      emailVerified: updatedUser.get('emailVerified') || false,
+      createdAt: updatedUser.createdAt?.toISOString() || '',
+      updatedAt: updatedUser.updatedAt?.toISOString() || '',
+      Acess_level: updatedUser.get('Acess_level') || 'user',
+    };
+  } catch (error) {
+    console.error('Error updating user:', error);
+    throw new Error(`Failed to update user: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
  * Deletes a user from the Back4App _User class.
- * Ensures an admin session is active before deleting a user.
+ * This function relies on an existing Parse session with delete permissions.
  * @param userId The objectId of the user to delete.
  * @returns A promise that resolves when the user is deleted.
  */
 export async function deleteUser(userId: string): Promise<void> {
-  // Ensure admin is logged in before deleting a user
-  if (!Parse.User.current()) {
-    await loginAdmin();
-  }
   try {
     const user = new Parse.User();
     user.set('objectId', userId); // Set the objectId to identify the user
@@ -157,15 +175,11 @@ export async function deleteUser(userId: string): Promise<void> {
 
 /**
  * Sends a simulated broadcast notification.
- * Ensures an admin session is active before sending a notification.
+ * This function relies on an existing Parse session with appropriate permissions for Cloud Functions.
  * @param notificationData The notification content.
  * @returns A promise that resolves when the notification is "sent".
  */
 export async function sendBroadcastNotification(notificationData: NotificationData): Promise<void> {
-  // Ensure admin is logged in before sending notification
-  if (!Parse.User.current()) {
-    await loginAdmin();
-  }
   console.log('Simulating broadcast notification:', notificationData);
   // In a real application, you would interact with a Parse Cloud Function here
   // Example (requires a Cloud Code function named 'sendGlobalNotification'):
@@ -187,16 +201,11 @@ export function generateTemporaryPassword(): string {
 
 /**
  * Fetches and calculates user statistics.
- * Ensures an admin session is active before fetching statistics.
+ * This function relies on an existing Parse session or public read permissions.
  * @returns A promise that resolves to an object containing user statistics.
  */
 export async function getUserStatistics() {
   try {
-    // Ensure admin is logged in before making requests that might require authentication
-    if (!Parse.User.current()) {
-      await loginAdmin(); // Attempt to log in if no current user
-    }
-
     const query = new Parse.Query(Parse.User);
     const totalUsers = await query.count();
 

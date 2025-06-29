@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation" 
+import { useRouter } from "next/navigation"
 
 import {
   Moon,
@@ -451,7 +451,7 @@ const LeaveStatusDialog = ({ isOpen, onOpenChange, leave, newStatus, onConfirm }
 
 
 export default function Dashboard() {
-  // Removed useRouter as it's not compatible
+  const router = useRouter()
   const [theme, setTheme] = useState("light")
   const [activeTab, setActiveTab] = useState("accounts")
   const [adminOpen, setAdminOpen] = useState(true)
@@ -474,7 +474,6 @@ export default function Dashboard() {
   const [isLeaveStatusDialogOpen, setIsLeaveStatusDialogOpen] = useState(false);
   const [selectedLeave, setSelectedLeave] = useState(null);
   const [newLeaveStatus, setNewLeaveStatus] = useState("");
-  const router = useRouter();
 
 
   // Handle authentication check on dashboard load
@@ -507,18 +506,15 @@ export default function Dashboard() {
         // Use window.Parse as it's now loaded globally
         if (typeof window !== 'undefined' && window.Parse) {
           const currentUser = window.Parse.User.current();
-          // For now, without Next.js router, we won't redirect.
-          // In a full Next.js app, you'd use router.push("/login");
           if (!currentUser) {
-            console.log("No current Parse user found. (Would redirect to login in a Next.js app)");
-            // Optionally, handle unauthenticated state in the UI
+            router.push("/login"); // Redirect to login page
           }
         } else {
             console.log("Parse SDK not yet loaded.");
         }
       } catch (error) {
         console.error("Error checking Parse session:", error);
-        // console.log("Error checking Parse session. (Would redirect to login in a Next.js app)");
+        router.push("/login"); // Redirect to login page on error
       }
     };
 
@@ -555,9 +551,8 @@ export default function Dashboard() {
     try {
       if (typeof window !== 'undefined' && window.Parse) {
         await window.Parse.User.logOut(); // Use global Parse SDK's logout function
-        // For now, without Next.js router, we won't redirect.
-        // localStorage.removeItem("inventureLoggedIn"); // Remove local storage item
-        console.log("Logged out successfully. (Would redirect to login in a Next.js app)");
+        localStorage.removeItem("inventureLoggedIn"); // Remove local storage item
+        router.push("/login"); // Redirect to login page
       }
     } catch (error) {
       console.error("Error during Parse logout:", error);
@@ -1075,7 +1070,7 @@ export default function Dashboard() {
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => router.push("/profile")}>Profile</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/admin/settings")}>Settings</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                 <LogOut className="h-4 w-4 mr-2" />
@@ -1532,4 +1527,3 @@ export default function Dashboard() {
     </div>
   )
 }
-

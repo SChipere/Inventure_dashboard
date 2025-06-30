@@ -59,8 +59,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-}
- from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog"
 import { format } from "date-fns"
 import {
   fetchAllUsers,
@@ -69,10 +68,12 @@ import {
   sendBroadcastNotification,
   generateTemporaryPassword,
   getUserStatistics,
-  type AdminUser,
+  updateUser,
+  type AdminUser, // This type now refers to Employee type from back4app-admin
   type CreateUserData,
   type NotificationData,
-} from "@/lib/back4app-admin" // This import will now resolve after creating the file
+  type UpdateUserData,
+} from "@/lib/back4app-admin"
 
 // Add User Form Component
 function AddUserForm({ onSubmit, onCancel, isLoading }) {
@@ -84,10 +85,8 @@ function AddUserForm({ onSubmit, onCancel, isLoading }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // Using a custom alert/modal for better UI instead of browser's alert()
-    // For simplicity, I'm keeping the original alert for now, but recommend replacing it
     if (!username || !email || !password) {
-      alert("Please fill in all required fields")
+      console.error("Please fill in all required fields for adding a user.")
       return
     }
 
@@ -209,6 +208,152 @@ function AddUserForm({ onSubmit, onCancel, isLoading }) {
   )
 }
 
+// Edit User Form Component
+function EditUserForm({ onSubmit, onCancel, isLoading, user }) {
+  const [username, setUsername] = useState(user.User || "") // Use 'User' field
+  const [email, setEmail] = useState(user.Email || "") // Use 'Email' field
+  const [accessLevel, setAccessLevel] = useState(user.Access_level || "user") // Use 'Access_level' field
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [emailVerified, setEmailVerified] = useState(true) // Always true as per new requirement
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    const userData: UpdateUserData = {
+      objectId: user.objectId, // This objectId is from the Employees class.
+      username,
+      email,
+      Acess_level: accessLevel,
+      emailVerified, // This will always be true
+    }
+
+    if (password) {
+      userData.password = password
+    }
+
+    onSubmit(userData)
+  }
+
+  const generateNewPassword = () => {
+    const newPassword = generateTemporaryPassword()
+    setPassword(newPassword)
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="edit-username">Username</Label>
+          <Input
+            id="edit-username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Enter username"
+            className="mt-1"
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="edit-email">Email</Label>
+          <Input
+            id="edit-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter email address"
+            className="mt-1"
+            required
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="edit-password">New Password (optional)</Label>
+          <div className="relative mt-1">
+            <Input
+              id="edit-password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Leave blank to keep current password"
+              className="pr-20"
+            />
+            <div className="absolute right-1 top-0 h-full flex items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={generateNewPassword}
+                title="Generate new password"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">Leave blank to keep the current password.</p>
+        </div>
+        <div>
+          <Label htmlFor="edit-accessLevel">Access Level</Label>
+          <Select value={accessLevel} onValueChange={setAccessLevel}>
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Select access level" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="user">User</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="manager">Manager</SelectItem>
+              <SelectItem value="employee">Employee</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          id="emailVerified"
+          checked={emailVerified} // This checkbox will always be checked
+          onChange={(e) => setEmailVerified(e.target.checked)} // Still allow changing if logic changes later
+          className="h-4 w-4 text-primary rounded"
+          disabled // Disable to reflect it's always verified
+        />
+        <Label htmlFor="emailVerified">Email Verified</Label>
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Updating User...
+            </>
+          ) : (
+            <>
+              <Edit className="h-4 w-4 mr-2" />
+              Update User
+            </>
+          )}
+        </Button>
+      </DialogFooter>
+    </form>
+  )
+}
+
 // Broadcast Notification Form Component
 function BroadcastNotificationForm({ onSubmit, onCancel, isLoading }) {
   const [title, setTitle] = useState("")
@@ -217,10 +362,8 @@ function BroadcastNotificationForm({ onSubmit, onCancel, isLoading }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // Using a custom alert/modal for better UI instead of browser's alert()
-    // For simplicity, I'm keeping the original alert for now, but recommend replacing it
     if (!title || !message) {
-      alert("Please fill in all required fields")
+      console.error("Please fill in all required fields for the broadcast notification.")
       return
     }
 
@@ -312,6 +455,8 @@ export default function AdminSettingsPage() {
   const [isBroadcastDialogOpen, setIsBroadcastDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [userToEdit, setUserToEdit] = useState<AdminUser | null>(null)
 
   // Message states
   const [successMessage, setSuccessMessage] = useState("")
@@ -325,25 +470,25 @@ export default function AdminSettingsPage() {
     recentUsers: 0,
   })
 
-  // Load users and statistics
+  // Load users and statistics on component mount
   useEffect(() => {
     loadData()
   }, [])
 
-  // Filter users based on search and access level
+  // Filter users based on search and access level whenever users, searchTerm, or accessLevelFilter changes
   useEffect(() => {
     let filtered = users
 
     if (searchTerm) {
       filtered = filtered.filter(
         (user) =>
-          user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          user.email.toLowerCase().includes(searchTerm.toLowerCase()),
+          user.User.toLowerCase().includes(searchTerm.toLowerCase()) || // Use user.User for username
+          user.Email.toLowerCase().includes(searchTerm.toLowerCase()), // Use user.Email for email
       )
     }
 
     if (accessLevelFilter !== "all") {
-      filtered = filtered.filter((user) => user.Acess_level === accessLevelFilter)
+      filtered = filtered.filter((user) => user.Access_level?.toLowerCase() === accessLevelFilter) // Use user.Access_level
     }
 
     setFilteredUsers(filtered)
@@ -360,12 +505,23 @@ export default function AdminSettingsPage() {
     }
   }, [successMessage, errorMessage])
 
+  // Function to load all data (users and statistics)
   const loadData = async () => {
     setIsLoading(true)
     try {
+      // fetchAllUsers now fetches from 'Employees'
+      // getUserStatistics now fetches from 'Employees' and counts based on @inventure.mu
       const [usersData, statsData] = await Promise.all([fetchAllUsers(), getUserStatistics()])
+
       setUsers(usersData)
       setStats(statsData)
+      setSearchTerm("");
+      setAccessLevelFilter("all");
+      setFilteredUsers(usersData);
+
+      console.log("Fetched Users Data (from Employees):", usersData);
+      console.log("Fetched User Statistics (from Employees):", statsData);
+
     } catch (error) {
       setErrorMessage("Failed to load data")
       console.error("Error loading data:", error)
@@ -374,13 +530,15 @@ export default function AdminSettingsPage() {
     }
   }
 
+  // Handler for adding a new user (will create in both _User and Employees)
   const handleAddUser = async (userData: CreateUserData) => {
     setIsSaving(true)
     try {
-      const newUser = await createUser(userData)
-      setUsers((prev) => [...prev, newUser])
+      const newEmployee = await createUser(userData) // createUser now handles both
+      setUsers((prev) => [...prev, newEmployee])
       setIsAddUserDialogOpen(false)
       setSuccessMessage(`User "${userData.username}" created successfully!`)
+      loadData();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to create user")
     } finally {
@@ -388,23 +546,47 @@ export default function AdminSettingsPage() {
     }
   }
 
+  // Handler for updating an existing user (will update in both _User and Employees)
+  const handleUpdateUser = async (userData: UpdateUserData) => {
+    setIsSaving(true)
+    try {
+      const updatedEmployee = await updateUser(userData) // updateUser now handles both
+      setUsers((prev) =>
+        prev.map((user) => (user.objectId === updatedEmployee.objectId ? updatedEmployee : user)),
+      )
+      setIsEditDialogOpen(false)
+      setUserToEdit(null)
+      setSuccessMessage(`User "${updatedEmployee.User}" updated successfully!`) // Use updatedEmployee.User
+      loadData();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to update user")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Handler for deleting a user (will delete from both _User and Employees)
   const handleDeleteUser = async () => {
     if (!userToDelete) return
 
     setIsSaving(true)
     try {
+      // Pass the objectId from the Employee record, back4app-admin will find the _User by email
       await deleteUser(userToDelete.objectId)
       setUsers((prev) => prev.filter((user) => user.objectId !== userToDelete.objectId))
       setIsDeleteDialogOpen(false)
       setUserToDelete(null)
-      setSuccessMessage(`User "${userToDelete.username}" deleted successfully!`)
-    } catch (error) {
+      setSuccessMessage(`User "${userToDelete.User}" deleted successfully!`) // Use userToDelete.User
+      loadData();
+    }
+    catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to delete user")
     } finally {
       setIsSaving(false)
     }
   }
 
+  // Handler for sending a broadcast notification
   const handleBroadcastNotification = async (notificationData: NotificationData) => {
     setIsSaving(true)
     try {
@@ -418,13 +600,15 @@ export default function AdminSettingsPage() {
     }
   }
 
+  // Helper function to copy text to clipboard
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
+    document.execCommand('copy');
     setSuccessMessage("Copied to clipboard!")
   }
 
+  // Helper function to get the appropriate badge for access level
   const getAccessLevelBadge = (accessLevel?: string) => {
-    switch (accessLevel) {
+    switch (accessLevel?.toLowerCase()) {
       case "admin":
         return <Badge variant="destructive">Admin</Badge>
       case "manager":
@@ -509,6 +693,7 @@ export default function AdminSettingsPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Verified Users</CardTitle>
+              {/* Assuming 'verified' concept maps to all @inventure.mu emails for now */}
               <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -547,9 +732,9 @@ export default function AdminSettingsPage() {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  User Management
+                  Employee Management
                 </CardTitle>
-                <p className="text-muted-foreground">Manage all users in the system</p>
+                <p className="text-muted-foreground">Manage all employees in the system</p>
               </div>
               <Button onClick={loadData} variant="outline" size="sm">
                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -563,7 +748,7 @@ export default function AdminSettingsPage() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search users by username or email..."
+                  placeholder="Search employees by name or email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -588,7 +773,7 @@ export default function AdminSettingsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>User</TableHead>
+                    <TableHead>Employee</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Access Level</TableHead>
                     <TableHead>Status</TableHead>
@@ -604,50 +789,56 @@ export default function AdminSettingsPage() {
                           <Users className="h-8 w-8 text-muted-foreground" />
                           <p className="text-muted-foreground">
                             {searchTerm || accessLevelFilter !== "all"
-                              ? "No users match your filters"
-                              : "No users found"}
+                              ? "No employees match your filters"
+                              : "No employees found"}
                           </p>
                         </div>
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredUsers.map((user) => (
+                    filteredUsers.map((user) => ( // 'user' here is actually an 'Employee' object
                       <TableRow key={user.objectId}>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
                               <AvatarImage src="/placeholder.svg?height=32&width=32" />
                               <AvatarFallback className="text-xs">
-                                {user.username.charAt(0).toUpperCase()}
+                                {/* Generate first and last name initials from the 'User' field */}
+                                {(() => {
+                                  const nameParts = user.User.split(' ');
+                                  if (nameParts.length > 1) {
+                                    return (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
+                                  }
+                                  return user.User.charAt(0).toUpperCase();
+                                })()}
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <div className="font-medium">{user.username}</div>
+                              <div className="font-medium">{user.User}</div>
                               <div className="text-xs text-muted-foreground">ID: {user.objectId.slice(-8)}</div>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <span>{user.email}</span>
+                            <span>{user.Email}</span>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-6 w-6"
-                              onClick={() => copyToClipboard(user.email)}
+                              onClick={() => copyToClipboard(user.Email)}
                             >
                               <Copy className="h-3 w-3" />
                             </Button>
                           </div>
                         </TableCell>
-                        <TableCell>{getAccessLevelBadge(user.Acess_level)}</TableCell>
+                        <TableCell>{getAccessLevelBadge(user.Access_level)}</TableCell>
                         <TableCell>
-                          <Badge variant={user.emailVerified ? "default" : "secondary"}>
-                            {user.emailVerified ? "Verified" : "Unverified"}
-                          </Badge>
+                          {/* emailVerified is not directly available from Employees class without explicit lookup to _User */}
+                          <Badge variant={"secondary"}>Unverified</Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm">{format(new Date(user.createdAt), "MMM d, yyyy")}</div>
+                          <div className="text-sm">{format(new Date(user.createdAt), "MMM d,yyyy")}</div>
                           <div className="text-xs text-muted-foreground">
                             {format(new Date(user.createdAt), "HH:mm")}
                           </div>
@@ -665,14 +856,19 @@ export default function AdminSettingsPage() {
                                 <Copy className="h-4 w-4 mr-2" />
                                 Copy ID
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => copyToClipboard(user.email)}>
+                              <DropdownMenuItem onClick={() => copyToClipboard(user.Email)}>
                                 <Mail className="h-4 w-4 mr-2" />
                                 Copy Email
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setUserToEdit(user)
+                                  setIsEditDialogOpen(true)
+                                }}
+                              >
                                 <Edit className="h-4 w-4 mr-2" />
-                                Edit User
+                                Edit Employee
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive"
@@ -682,7 +878,7 @@ export default function AdminSettingsPage() {
                                 }}
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
-                                Delete User
+                                Delete Employee
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -703,15 +899,41 @@ export default function AdminSettingsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="h-5 w-5" />
-              Add New User
+              Add New Employee
             </DialogTitle>
             <DialogDescription>
-              Create a new user account with a temporary password. The user can change their password after first login.
+              Create a new employee account with a temporary password.
             </DialogDescription>
           </DialogHeader>
           <AddUserForm onSubmit={handleAddUser} onCancel={() => setIsAddUserDialogOpen(false)} isLoading={isSaving} />
         </DialogContent>
       </Dialog>
+
+      {/* Edit User Dialog */}
+      {userToEdit && (
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Edit className="h-5 w-5" />
+                Edit Employee: {userToEdit.User}
+              </DialogTitle>
+              <DialogDescription>
+                Modify employee details, access level, and optionally set a new password.
+              </DialogDescription>
+            </DialogHeader>
+            <EditUserForm
+              onSubmit={handleUpdateUser}
+              onCancel={() => {
+                setIsEditDialogOpen(false)
+                setUserToEdit(null)
+              }}
+              isLoading={isSaving}
+              user={userToEdit}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Broadcast Notification Dialog */}
       <Dialog open={isBroadcastDialogOpen} onOpenChange={setIsBroadcastDialogOpen}>
@@ -739,8 +961,8 @@ export default function AdminSettingsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the user account for{" "}
-              <strong>{userToDelete?.username}</strong> and remove all their data from the system.
+              This action cannot be undone. This will permanently delete the employee account for{" "}
+              <strong>{userToDelete?.User}</strong> and remove all their data from the system.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -756,7 +978,7 @@ export default function AdminSettingsPage() {
                   Deleting...
                 </>
               ) : (
-                "Delete User"
+                "Delete Employee"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -765,3 +987,4 @@ export default function AdminSettingsPage() {
     </div>
   )
 }
+

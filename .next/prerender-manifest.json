@@ -25,30 +25,6 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/dashboard": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "Next-Action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/dashboard",
-      "dataRoute": "/dashboard.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
     "/employee-dashboard": {
       "experimentalBypassFor": [
         {
@@ -64,6 +40,30 @@
       "initialRevalidateSeconds": false,
       "srcRoute": "/employee-dashboard",
       "dataRoute": "/employee-dashboard.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/dashboard": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "Next-Action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/dashboard",
+      "dataRoute": "/dashboard.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -149,8 +149,8 @@
   "dynamicRoutes": {},
   "notFoundRoutes": [],
   "preview": {
-    "previewModeId": "583784916abd0f9b8ae47c6136992687",
-    "previewModeSigningKey": "66f17da5a660801138390f94bb9b52b69722ed0baf8c0e51fd349d6f154c41d0",
-    "previewModeEncryptionKey": "6ea7fac9ca2903237b9b9af3d4f9a2804cff6c18e5b8413ea8c2e465d31d5f70"
+    "previewModeId": "ea66dd34bb0194dc1adcbf532539bf59",
+    "previewModeSigningKey": "7d6bfe95744a0155a2a37d1d75b02f1302cb13bcb8a183881843a68fdf3dd7b6",
+    "previewModeEncryptionKey": "8e35a9d3847b49bc02780cc1e9a72c7a662cf41df30efb3b61d2c63ec62b8814"
   }
 }

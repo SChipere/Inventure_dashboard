@@ -127,29 +127,30 @@ const changePassword = async (objectId: string, currentPassword: string, newPass
     throw new Error("Parse SDK not available to changePassword.");
   }
   try {
-    const user = window.Parse.User.current(); // Ensure the current user is authenticated
+    const user = window.Parse.User.current();
     if (!user || user.id !== objectId) {
       throw new Error("Not authorized to change this user's password.");
     }
-    // Parse doesn't have a direct 'change password' method that requires old password for security reasons
-    // other than re-authenticating. For a direct update when the user is logged in, you just set the new password.
-    // However, if old password validation is strictly required, you might need a cloud function.
-    // For this example, assuming the user is already authenticated and currentPassword is for client-side validation/UX.
-    // The actual security check should ideally happen on the server/cloud function.
 
-    // A common pattern for changing password with old password validation is:
-    // 1. Re-authenticate the user with username/email and currentPassword.
-    // 2. If successful, set the new password and save.
-    // This example simplifies, assuming the current user is the one being updated.
-    await user.authenticate(user.get('username'), currentPassword); // Or email, depending on how auth works
+    // First, verify the current password by attempting to log in with it.
+    // Use the username from the current user object for re-authentication.
+    // This will throw an error if the current password is wrong,
+    // which will be caught by the try/catch block.
+    await window.Parse.User.logIn(user.get('username'), currentPassword);
+
+    // If logIn is successful, it means the currentPassword is correct.
+    // Now, set the new password on the *current* user object and save it.
     user.set("password", newPassword);
-    await user.save(null, { useMasterKey: false }); // Do NOT use Master Key on client-side!
-    // If the above authenticate fails, it will throw an error caught by the try/catch.
+    await user.save(); // This saves the changes to the user object on Parse Server.
+
   } catch (error: any) {
+    // Catch specific Parse error code for invalid login (incorrect password)
+    if (error.code === 101) {
+      throw new Error("Incorrect current password provided.");
+    }
     throw new Error(`Failed to change password: ${error.message}`);
   }
 };
-
 
 const checkUsernameAvailability = async (username: string, currentUserId: string): Promise<boolean> => {
   if (typeof window === 'undefined' || !window.Parse) {

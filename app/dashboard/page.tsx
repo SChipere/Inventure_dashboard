@@ -26,6 +26,7 @@ import {
   Download,
   Briefcase, // Added for HR tab icon
   User, // Added for profile icon
+  Loader2, // Ensure Loader2 is imported for the loading animation
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -469,6 +470,7 @@ export default function Dashboard() {
   const [deleteTaskId, setDeleteTaskId] = useState(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true); // New state for loading indicator
 
   // State for HR leave management
   const [isLeaveStatusDialogOpen, setIsLeaveStatusDialogOpen] = useState(false);
@@ -569,6 +571,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchAllData = async () => {
+      setIsLoading(true); // Set loading to true when data fetching starts
       try {
         const response = await fetch("/api/proxy")
 
@@ -631,6 +634,8 @@ export default function Dashboard() {
         setAppData(normalizedData)
       } catch (error) {
         console.error("Error fetching data from proxy:", error)
+      } finally {
+        setIsLoading(false); // Set loading to false when data fetching completes
       }
     }
 
@@ -892,8 +897,8 @@ export default function Dashboard() {
           dueDate: dataItem.dueDate || null,
           lastUpdated: dataItem.lastUpdated || "",
           completionDate: dataItem.completionDate || null,
-          status: dataItem.status || "not-started",
-          priority: dataItem.priority || "medium",
+          status: dataItem.status || "medium", // Default to 'medium' if not set
+          priority: dataItem.priority || "not-started", // Default to 'not-started' if not set
           "assigned to": dataItem.assignedTo || "", // Use original sheet column name
           "Secondary Assignee": dataItem.assignedToSecond || "", // Use original sheet column name
           "Short term": dataItem.notes || "", // Use original sheet column name
@@ -1328,8 +1333,14 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  {/* Conditional rendering for HR vs. other tabs */}
-                  {tabKey === "hr" ? (
+                  {/* Conditional rendering for HR vs. other tabs, and loading state */}
+                  {isLoading ? (
+                    <div className="flex flex-col items-center justify-center h-64 text-center">
+                      <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+                      <p className="text-muted-foreground text-lg">Loading {tabDisplayName} data...</p>
+                      <p className="text-muted-foreground text-sm mt-1">Please wait while we fetch your information.</p>
+                    </div>
+                  ) : tabKey === "hr" ? (
                     <HRLeavesTable
                       leaves={currentTabTasks} // Use currentTabTasks which is appData.hr
                       updateLeaveStatus={updateLeaveStatus}

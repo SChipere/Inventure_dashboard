@@ -2,9 +2,9 @@
   "/_not-found/page": "/_not-found",
   "/api/proxy/route": "/api/proxy",
   "/admin/settings/page": "/admin/settings",
-  "/dashboard/page": "/dashboard",
   "/employee-dashboard/page": "/employee-dashboard",
   "/login/page": "/login",
   "/page": "/",
-  "/profile/page": "/profile"
+  "/profile/page": "/profile",
+  "/dashboard/page": "/dashboard"
 }

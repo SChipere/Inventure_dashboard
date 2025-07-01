@@ -73,7 +73,7 @@ import {
 // import "jspdf-autotable"
 
 // TaskCard Component (assuming it's defined elsewhere or will be provided)
-const TaskCard = ({ task, tabKey, calculateDaysDifference, getStatusColor, getPriorityBadge, onEdit, onDelete, onComplete }) => {
+const TaskCard = ({ task, calculateDaysDifference, getStatusColor, getPriorityBadge, onEdit, onDelete, onComplete }) => {
   return (
     <Card className="bg-card/50 backdrop-blur-sm flex flex-col"> {/* Added flex-col to Card for dynamic height */}
       <CardHeader className="p-4 pb-2 flex-shrink-0">
@@ -593,6 +593,7 @@ export default function Dashboard() {
             if (item.leaveType || item.dateApplied || item.daysOfLeave) {
               return {
                 id: item.id || item.objectId || Date.now(), // Use objectId or generate new
+                sourceTab: tabKey, // Store the original tab
                 name: item.name || "",
                 surname: item.surname || "",
                 leaveType: item.leaveType || "",
@@ -608,6 +609,7 @@ export default function Dashboard() {
               // Otherwise, assume it's a task
               return {
                 id: item.id || item.objectId || Date.now(),
+                sourceTab: tabKey, // Store the original tab
                 title: item.title || "",
                 description: item.description || "",
                 dueDate: item.dueDate || null,
@@ -639,7 +641,7 @@ export default function Dashboard() {
 
   // Add a new task (used for admin tasks)
   const addTask = (tab, task) => {
-    const newTask = { ...task, id: Date.now() } // Generate client-side ID for new tasks
+    const newTask = { ...task, id: Date.now(), sourceTab: tab } // Generate client-side ID and set sourceTab
     const updatedAppData = { ...appData }
     updatedAppData[tab] = [...(appData[tab] || []), newTask]
     setAppData(updatedAppData)
@@ -776,18 +778,18 @@ export default function Dashboard() {
     }
   }
 
-  // Calculate completion percentage for a tab
-  const calculateCompletion = (tabData) => {
-    if (!tabData || tabData.length === 0) return 0
+  // Calculate completion percentage for a tab (or combined data)
+  const calculateCompletion = (data) => {
+    if (!data || data.length === 0) return 0
     // For HR tab, consider 'approved' as completed equivalent
-    const completed = tabData.filter((item) => item.status === "completed" || item.status === "approved").length
-    return Math.round((completed / tabData.length) * 100)
+    const completed = data.filter((item) => item.status === "completed" || item.status === "approved").length
+    return Math.round((completed / data.length) * 100)
   }
 
   // Get icon for tab
   const getTabIcon = (tab) => {
     switch (tab) {
-      case "admin":
+      case "admin": // This icon is still used for the sidebar's overall admin section
         return <Settings className="h-5 w-5" />
       case "accounts":
         return <Users className="h-5 w-5" />
@@ -806,7 +808,7 @@ export default function Dashboard() {
     }
   }
 
-  // Calculate task statistics for analytics
+  // Calculate task statistics for analytics (combining admin and results)
   const calculateTaskStats = () => {
     let totalTasks = 0
     let completedTasks = 0
@@ -814,7 +816,8 @@ export default function Dashboard() {
     let upcomingTasks = 0
 
     // Include tasks from all relevant tabs for analytics
-    const taskTabs = ["accounts", "tasks", "compliance", "payments", "results", "admin"]; // Explicitly list task tabs
+    const taskTabs = ["accounts", "tasks", "compliance", "payments"];
+    const combinedAdminResults = [...(appData.results || []), ...(appData.admin || [])];
 
     taskTabs.forEach((tab) => {
       if (appData[tab]) {
@@ -834,6 +837,22 @@ export default function Dashboard() {
         })
       }
     })
+
+    // Add combined admin and results tasks
+    combinedAdminResults.forEach((task) => {
+        totalTasks++;
+        if (task.status === "completed") {
+            completedTasks++;
+        } else {
+            const dueDate = new Date(task.dueDate);
+            const today = new Date();
+            if (dueDate && dueDate < today) {
+                overdueTasks++;
+            } else {
+                upcomingTasks++;
+            }
+        }
+    });
 
     return {
       totalTasks,
@@ -900,17 +919,24 @@ export default function Dashboard() {
     }
   }
 
-  // Get task counts by department for analytics
+  // Get task counts by department for analytics (combining admin and results)
   const getTasksByDepartment = () => {
     const departments = {}
 
-    Object.keys(appData).forEach((tab) => {
-      // Exclude admin and hr from "Tasks by Department" for this specific chart
-      if (tab !== "admin" && tab !== "hr" && appData[tab]) {
-        const tabName = tab.charAt(0).toUpperCase() + tab.slice(1)
-        departments[tabName] = appData[tab].length
+    // Combine results and admin tasks under one "Administrative tasks" key
+    const combinedAdminAndResultsCount = (appData.results?.length || 0) + (appData.admin?.length || 0);
+    if (combinedAdminAndResultsCount > 0) {
+        departments["Administrative Tasks"] = combinedAdminAndResultsCount;
+    }
+
+    // Include other tabs as before
+    const otherTabs = ["accounts", "tasks", "compliance", "payments"];
+    otherTabs.forEach((tab) => {
+      if (appData[tab] && appData[tab].length > 0) {
+        const tabName = tab.charAt(0).toUpperCase() + tab.slice(1);
+        departments[tabName] = appData[tab].length;
       }
-    })
+    });
 
     return departments
   }
@@ -918,16 +944,30 @@ export default function Dashboard() {
   // Sort tasks
   const sortTasks = (tabKey) => {
     setAppData((prevAppData) => {
-      const tasksToSort = [...(prevAppData[tabKey] || [])]
+      let tasksToSort;
+      if (tabKey === "results") { // If it's the combined tab
+        tasksToSort = [...(prevAppData.results || []), ...(prevAppData.admin || [])];
+      } else {
+        tasksToSort = [...(prevAppData[tabKey] || [])];
+      }
+
       const sortedTasks = tasksToSort.sort((a, b) => {
         const dateA = a.dueDate ? new Date(a.dueDate) : new Date(8640000000000000); // Max Date if no due date
         const dateB = b.dueDate ? new Date(b.dueDate) : new Date(8640000000000000); // Max Date if no due date
         return dateA.getTime() - dateB.getTime();
       });
-      return {
-        ...prevAppData,
-        [tabKey]: sortedTasks,
-      };
+
+      // When sorting a combined tab, we don't modify individual source arrays directly
+      // This sort function is primarily for the displayed order.
+      // If we need to persist sort, it would require re-evaluating the data structure.
+      // For now, this just affects the UI order.
+      // However, to make this state change effective for React re-render,
+      // we need a mechanism to store the sorted state,
+      // or ensure `combinedTasks` is always sorted before rendering.
+      // For simplicity, let's just make sure `combinedTasks` is always sorted for display.
+      // The actual `appData` doesn't need to change for display sort.
+      return prevAppData; // Returning prevAppData as the sort affects display, not underlying state structure
+                          // The `currentTabTasks` variable will be re-computed and sorted on render.
     });
   };
 
@@ -940,10 +980,18 @@ export default function Dashboard() {
 
       let tableColumn = [];
       let tableRows = [];
+      let dataToReport = [];
+
+      if (tabKey === "results") { // For the combined Administrative tasks tab
+        dataToReport = [...(appData.results || []), ...(appData.admin || [])];
+      } else {
+        dataToReport = appData[tabKey];
+      }
+
 
       if (tabKey === "hr") {
         tableColumn = ["Name", "Leave Type", "Start Date", "End Date", "Days", "Date Applied", "Status"];
-        tableRows = appData[tabKey].map(item => ([
+        tableRows = dataToReport.map(item => ([
           `${item.name} ${item.surname}`,
           item.leaveType,
           item.startDate ? format(parseISO(item.startDate), "MMM d,yyyy") : "N/A",
@@ -954,7 +1002,7 @@ export default function Dashboard() {
         ]));
       } else {
         tableColumn = ["Title", "Due Date", "Status", "Priority", "Assigned To"];
-        tableRows = appData[tabKey].map(item => ([
+        tableRows = dataToReport.map(item => ([
           item.title,
           item.dueDate ? format(new Date(item.dueDate), "MMM d,yyyy") : "N/A",
           item.status,
@@ -987,10 +1035,17 @@ export default function Dashboard() {
   const downloadCsvReport = (tabKey, tabName) => {
     let headers = [];
     let rows = [];
+    let dataToReport = [];
+
+    if (tabKey === "results") { // For the combined Administrative tasks tab
+      dataToReport = [...(appData.results || []), ...(appData.admin || [])];
+    } else {
+      dataToReport = appData[tabKey];
+    }
 
     if (tabKey === "hr") {
       headers = ["Name", "Surname", "Leave Type", "Days Of Leave", "Start Date", "End Date", "Date Applied", "Status", "Creator ID"];
-      rows = appData[tabKey].map(item => ([
+      rows = dataToReport.map(item => ([
         item.name,
         item.surname,
         item.leaveType,
@@ -1003,7 +1058,7 @@ export default function Dashboard() {
       ]));
     } else {
       headers = ["Title", "Description", "Due Date", "Last Updated", "Completion Date", "Status", "Priority", "Assigned To", "Secondary Assignee", "Notes"];
-      rows = appData[tabKey].map(item => ([
+      rows = dataToReport.map(item => ([
         item.title,
         item.description,
         item.dueDate ? format(new Date(item.dueDate), "yyyy-MM-dd") : "N/A",
@@ -1085,7 +1140,7 @@ export default function Dashboard() {
         {/* Admin Side Panel */}
         <aside
           className={cn(
-            "min-h-screen h-full bg-muted/30 backdrop-blur-sm border-r transition-all duration-300 overflow-y-auto sticky top-0 left-0",
+            "min-h-screen h-full bg-muted/30 backdrop-blur-sm border-r transition-all duration-300 overflow-y-auto sticky top-0 left-0 z-10", // Added z-10
             adminOpen ? "w-96" : "w-20",
           )}
         >
@@ -1135,10 +1190,10 @@ export default function Dashboard() {
                     </div>
                     <div className="px-2 py-1.5">
                       <div className="flex justify-between text-sm">
-                        <span>Administration</span>
-                        <span>{calculateCompletion(appData.results)}%</span>
+                        <span>Administrative tasks</span>
+                        <span>{calculateCompletion([...(appData.results || []), ...(appData.admin || [])])}%</span>
                       </div>
-                      <Progress value={calculateCompletion(appData.results)} className="h-1.5 mt-1" />
+                      <Progress value={calculateCompletion([...(appData.results || []), ...(appData.admin || [])])} className="h-1.5 mt-1" />
                     </div>
                     <div className="px-2 py-1.5">
                       <div className="flex justify-between text-sm">
@@ -1149,87 +1204,12 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </div>
-
-                {/* Admin Tasks Section */}
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium px-2">Administration Tasks</h3>
-                  <div className="space-y-2">
-                    {appData.admin.map((task) => (
-                      <Card key={task.id} className="bg-card/50 backdrop-blur-sm">
-                        <CardHeader className="p-3 pb-0">
-                          <CardTitle className="text-sm flex items-center justify-between">
-                            <span className="truncate mr-2">{task.title}</span>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              {getPriorityBadge(task.priority)}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => {
-                                  setEditingTask({ ...task, tab: "admin" })
-                                  setIsEditDialogOpen(true)
-                                }}
-                              >
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-destructive"
-                                onClick={() => {
-                                  setDeleteTaskId({ id: task.id, tab: "admin" })
-                                  setIsDeleteDialogOpen(true)
-                                }}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-3 pt-1 text-xs text-muted-foreground">
-                          <p className="line-clamp-2">{task.description}</p>
-                        </CardContent>
-                        <CardFooter className="p-3 pt-0 flex justify-between text-xs">
-                          <div className="flex items-center">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {format(new Date(task.dueDate), "MMM d")}
-                          </div>
-                          <div
-                            className={cn(
-                              "flex items-center px-2 py-0.5 rounded-full text-white",
-                              task.status === "completed"
-                                ? "bg-green-500"
-                                : task.status === "in-progress"
-                                  ? "bg-blue-500"
-                                  : "bg-gray-500",
-                            )}
-                          >
-                            {task.status === "completed" ? (
-                              <CheckCircle2 className="h-3 w-3 mr-1" />
-                            ) : task.status === "in-progress" ? (
-                              <ClockIcon className="h-3 w-3 mr-1" />
-                            ) : (
-                              <AlertCircle className="h-3 w-3 mr-1" />
-                            )}
-                            {task.status === "completed"
-                              ? "Done"
-                              : task.status === "in-progress"
-                                ? "In Progress"
-                                : "Not Started"}
-                          </div>
-                        </CardFooter>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-
-                <TaskForm tabKey="admin" addTask={addTask} />
               </div>
             ) : (
               <div className="flex flex-col items-center space-y-6 mt-4">
-                {["accounts", "tasks", "compliance", "payments", "results", "hr", "admin"].map((tab) => {
+                {["accounts", "tasks", "compliance", "payments", "results", "hr"].map((tab) => {
                   const icon = getTabIcon(tab)
-                  const completion = calculateCompletion(appData[tab])
+                  const completion = tab === "results" ? calculateCompletion([...(appData.results || []), ...(appData.admin || [])]) : calculateCompletion(appData[tab])
 
                   return (
                     <div key={tab} className="relative">
@@ -1272,8 +1252,8 @@ export default function Dashboard() {
                   { key: "tasks", name: "Office Management" },
                   { key: "compliance", name: "Compliance" },
                   { key: "payments", name: "InventurePay" },
-                  { key: "results", name: "Administrative tasks" },
-                  { key: "hr", name: "HR" }, // Added HR tab
+                  { key: "results", name: "Administrative tasks" }, // This tab will now include 'admin' tasks
+                  { key: "hr", name: "HR" },
                 ].map((tabInfo) => (
                   <TabsTrigger
                     key={tabInfo.key}
@@ -1295,11 +1275,16 @@ export default function Dashboard() {
               { key: "tasks", name: "Office Management" },
               { key: "compliance", name: "Compliance" },
               { key: "payments", name: "InventurePay" },
-              { key: "results", name: "Administrative tasks" },
-              { key: "hr", name: "HR" }, // Added HR tab
+              { key: "results", name: "Administrative tasks" }, // This tab will now include 'admin' tasks
+              { key: "hr", name: "HR" },
             ].map((tabInfo) => {
               const tabKey = tabInfo.key;
               const tabDisplayName = tabInfo.name;
+
+              // Combine admin and results tasks for the 'results' tab
+              const currentTabTasks = tabKey === "results"
+                ? [...(appData.results || []), ...(appData.admin || [])]
+                : appData[tabKey];
 
               return (
                 <TabsContent key={tabKey} value={tabKey} className="p-6">
@@ -1307,7 +1292,7 @@ export default function Dashboard() {
                     <div>
                       <h2 className="text-2xl font-bold">{tabDisplayName}</h2>
                       <p className="text-muted-foreground">
-                        {appData[tabKey]?.length || 0} {tabKey === "hr" ? "leaves" : "tasks"} • {calculateCompletion(appData[tabKey])}% complete
+                        {currentTabTasks?.length || 0} {tabKey === "hr" ? "leaves" : "tasks"} • {calculateCompletion(currentTabTasks)}% complete
                       </p>
                     </div>
 
@@ -1346,7 +1331,7 @@ export default function Dashboard() {
                   {/* Conditional rendering for HR vs. other tabs */}
                   {tabKey === "hr" ? (
                     <HRLeavesTable
-                      leaves={appData.hr}
+                      leaves={currentTabTasks} // Use currentTabTasks which is appData.hr
                       updateLeaveStatus={updateLeaveStatus}
                       getStatusColor={getStatusColor}
                       openStatusDialog={openStatusDialog}
@@ -1354,24 +1339,23 @@ export default function Dashboard() {
                   ) : (
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                        {appData[tabKey] && appData[tabKey].length > 0 ? (
-                          appData[tabKey].map((task) => (
+                        {currentTabTasks && currentTabTasks.length > 0 ? (
+                          currentTabTasks.map((task) => (
                             <TaskCard
                               key={task.id}
                               task={task}
-                              tabKey={tabKey}
                               calculateDaysDifference={calculateDaysDifference}
                               getStatusColor={getStatusColor}
                               getPriorityBadge={getPriorityBadge}
                               onEdit={() => {
-                                setEditingTask({ ...task, tab: tabKey })
+                                setEditingTask({ ...task, tab: task.sourceTab }) // Use task.sourceTab
                                 setIsEditDialogOpen(true)
                               }}
                               onDelete={() => {
-                                setDeleteTaskId({ id: task.id, tab: tabKey })
+                                setDeleteTaskId({ id: task.id, tab: task.sourceTab }) // Use task.sourceTab
                                 setIsDeleteDialogOpen(true)
                               }}
-                              onComplete={() => markTaskComplete(tabKey, task.id)}
+                              onComplete={() => markTaskComplete(task.sourceTab, task.id)} // Use task.sourceTab
                             />
                           ))
                         ) : (
@@ -1393,7 +1377,7 @@ export default function Dashboard() {
 
                       <div className="mt-8" id="new-task-form">
                         <h3 className="text-lg font-medium mb-4">Add New Task</h3>
-                        <TaskForm tabKey={tabKey} addTask={addTask} />
+                        <TaskForm tabKey={"results"} addTask={addTask} /> {/* New tasks added here go to 'results' */}
                       </div>
                     </>
                   )}

@@ -69,7 +69,7 @@ import Parse from 'parse'; // Import Parse SDK
 // It's highly recommended to initialize Parse in a central location like _app.tsx
 // to ensure it's done only once for the entire application.
 if (!Parse.applicationId) { // Prevent re-initialization if hot-reloading
-  Parse.initialize("QGvrhwxOhWwRe1ljUk4uyWj7UA7xjxEDwP1vhdsw", "jh0aKxm3H9f62YisAgvLDI1cpF7DfIySlXgwGjcS");
+  Parse.initialize("QGvrhwxOhWwRe1ljUk4uyWj7UA7xjxEDwP1vhdsw", "jh0aKxm3H9f62YisAgvLDI1cpF7DfIySlXgwGjcF");
   Parse.serverURL = 'https://parseapi.back4app.com/';
 }
 
@@ -112,6 +112,70 @@ export type LeaveApplication = {
   endDate?: string | null
   creatorId: string // The Parse user ID who created this leave request
 }
+
+// Circular Progress Ring Component
+interface CircularProgressRingProps {
+    radius: number;
+    stroke: number;
+    progress: number; // percentage from 0 to 100
+    color: string;
+    label: string | number;
+    labelColor?: string;
+}
+
+const CircularProgressRing: React.FC<CircularProgressRingProps> = ({
+    radius,
+    stroke,
+    progress,
+    color,
+    label,
+    labelColor = 'currentColor'
+}) => {
+    const normalizedRadius = radius - stroke * 2;
+    const circumference = normalizedRadius * 2 * Math.PI;
+    const strokeDashoffset = circumference - (progress / 100) * circumference;
+
+    return (
+        <svg
+            height={radius * 2}
+            width={radius * 2}
+            viewBox={`0 0 ${radius * 2} ${radius * 2}`}
+        >
+            <circle
+                stroke="#e6e6e6" // Background color for the ring
+                fill="transparent"
+                strokeWidth={stroke}
+                r={normalizedRadius}
+                cx={radius}
+                cy={radius}
+            />
+            <circle
+                stroke={color}
+                fill="transparent"
+                strokeWidth={stroke}
+                strokeDasharray={circumference + ' ' + circumference}
+                style={{ strokeDashoffset }}
+                r={normalizedRadius}
+                cx={radius}
+                cy={radius}
+                transform={`rotate(-90 ${radius} ${radius})`}
+                strokeLinecap="round"
+            />
+            <text
+                x="50%"
+                y="50%"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fontSize={radius * 0.4}
+                fill={labelColor}
+                className="font-bold"
+            >
+                {label}
+            </text>
+        </svg>
+    );
+};
+
 
 // Leave Application Form Component
 function LeaveApplicationForm({ onSubmit, initialData = null, onCancel = null, isEdit = false }) {
@@ -1035,7 +1099,22 @@ export default function EmployeeDashboard() {
       }
     })
 
-    return { totalTasks, myTasks, completedTasks, overdueTasks }
+    // Calculate percentages for progress rings
+    const totalTasksCount = totalTasks;
+    const myTasksProgress = totalTasksCount > 0 ? (myTasks / totalTasksCount) * 100 : 0;
+    const completedTasksProgress = myTasks > 0 ? (completedTasks / myTasks) * 100 : 0;
+    const overdueTasksProgress = myTasks > 0 ? (overdueTasks / myTasks) * 100 : 0;
+
+
+    return {
+      totalTasks,
+      myTasks,
+      completedTasks,
+      overdueTasks,
+      myTasksProgress,
+      completedTasksProgress,
+      overdueTasksProgress
+    }
   }
 
   // Loading state
@@ -1057,9 +1136,8 @@ export default function EmployeeDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-background to-background/95">
       <header className="sticky top-0 z-20 backdrop-blur-md bg-background/80 border-b p-3 md:p-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <h1 className="text-lg md:text-2xl font-bold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
-            Inventure Dashboard
-          </h1>
+          {/* Replaced text with image */}
+          <img src="/Inventurelogo1.png" alt="Inventure Logo" className="h-10 w-auto" /> 
           <Badge variant="outline" className="ml-4 bg-primary/10 text-primary">
             Welcome, {currentUser}
           </Badge>
@@ -1100,27 +1178,55 @@ export default function EmployeeDashboard() {
       <div className="p-4 border-b bg-muted/20">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
           <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-primary">{stats.totalTasks}</div>
-              <div className="text-sm text-muted-foreground">Total Tasks</div>
+            <CardContent className="p-4 text-center flex flex-col items-center">
+              <CircularProgressRing
+                radius={40}
+                stroke={8}
+                progress={100} // Always 100% for total tasks as it's the absolute count
+                color="#8884d8" // A neutral color for total tasks
+                label={stats.totalTasks}
+                labelColor="hsl(var(--primary))"
+              />
+              <div className="text-sm text-muted-foreground mt-2">Total Tasks</div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-blue-500">{stats.myTasks}</div>
-              <div className="text-sm text-muted-foreground">My Tasks</div>
+            <CardContent className="p-4 text-center flex flex-col items-center">
+              <CircularProgressRing
+                radius={40}
+                stroke={8}
+                progress={stats.myTasksProgress}
+                color="#3b82f6" // Blue color for "My Tasks"
+                label={stats.myTasks}
+                labelColor="hsl(var(--primary))"
+              />
+              <div className="text-sm text-muted-foreground mt-2">My Tasks</div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-green-500">{stats.completedTasks}</div>
-              <div className="text-sm text-muted-foreground">Completed</div>
+            <CardContent className="p-4 text-center flex flex-col items-center">
+              <CircularProgressRing
+                radius={40}
+                stroke={8}
+                progress={stats.completedTasksProgress}
+                color="#22c55e" // Green color for "Completed"
+                label={stats.completedTasks}
+                labelColor="hsl(var(--primary))"
+              />
+              <div className="text-sm text-muted-foreground mt-2">Completed</div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-red-500">{stats.overdueTasks}</div>
-              <div className="text-sm text-muted-foreground">Overdue</div>
+            <CardContent className="p-4 text-center flex flex-col items-center">
+              <CircularProgressRing
+                radius={40}
+                stroke={8}
+                progress={stats.overdueTasksProgress}
+                color="#ef4444" // Red color for "Overdue"
+                label={stats.overdueTasks}
+                labelColor="hsl(var(--primary))"
+              />
+              <div className="text-sm text-muted-foreground mt-2">Overdue</div>
             </CardContent>
           </Card>
         </div>
@@ -1358,11 +1464,9 @@ export default function EmployeeDashboard() {
               <h2 className="text-2xl font-bold">HR Management</h2>
               <p className="text-muted-foreground">Submit your leave applications here.</p>
             </div>
-            <LeaveApplicationForm onSubmit={handleNewLeaveApplication} />
-
-            {/* Display submitted leave applications */}
+            {/* Display submitted leave applications (moved to top) */}
             {leaveApplications.length > 0 && (
-              <div className="mt-8">
+              <div className="mt-8 mb-8"> {/* Added margin-bottom for spacing */}
                 <h3 className="text-xl font-bold mb-4">Your Leave Applications</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {leaveApplications.map((app) => (
@@ -1377,6 +1481,8 @@ export default function EmployeeDashboard() {
                 </div>
               </div>
             )}
+            <h3 className="text-xl font-bold mb-4">Apply for New Leave</h3>
+            <LeaveApplicationForm onSubmit={handleNewLeaveApplication} />
           </TabsContent>
         </Tabs>
       </main>
@@ -1423,4 +1529,3 @@ export default function EmployeeDashboard() {
     </div>
   )
 }
-

@@ -1103,12 +1103,8 @@ export default function Dashboard() {
           <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setAdminOpen(!adminOpen)}>
             <Settings className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg md:text-2xl font-bold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
-            Inventure Dashboard
-          </h1>
-          <Badge variant="outline" className="ml-4 bg-primary/10 text-primary">
-            2025 Edition
-          </Badge>
+          <img src="/Inventurelogo1.png" alt="Inventure Logo" className="h-8 w-auto" />
+          
         </div>
 
         <div className="flex items-center gap-4">

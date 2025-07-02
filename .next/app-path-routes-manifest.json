@@ -3,8 +3,8 @@
   "/api/proxy/route": "/api/proxy",
   "/admin/settings/page": "/admin/settings",
   "/login/page": "/login",
-  "/dashboard/page": "/dashboard",
   "/page": "/",
   "/profile/page": "/profile",
-  "/employee-dashboard/page": "/employee-dashboard"
+  "/employee-dashboard/page": "/employee-dashboard",
+  "/dashboard/page": "/dashboard"
 }

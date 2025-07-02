@@ -27,6 +27,8 @@ import {
   Briefcase, // Added for HR tab icon
   User, // Added for profile icon
   Loader2, // Ensure Loader2 is imported for the loading animation
+  LayoutDashboard, // Icon for Employee Dash
+  ClipboardList, // Icon for Ongoing Work
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -247,7 +249,7 @@ const TaskForm = ({ tabKey, addTask }) => {
           <Label htmlFor="notes">Notes</Label>
           <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
-        <Button type="submit">
+        <Button type="submit" style={{ backgroundColor: '#01739d' }}>
           <Plus className="h-4 w-4 mr-2" />
           Add Task
         </Button>
@@ -357,14 +359,14 @@ const EditTaskForm = ({ task, onSave, onCancel }) => {
         <Button variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit">Save Changes</Button>
+        <Button type="submit" style={{ backgroundColor: '#01739d' }}>Save Changes</Button>
       </DialogFooter>
     </form>
   )
 }
 
 // HRLeavesTable Component for displaying and managing leave requests
-const HRLeavesTable = ({ leaves, updateLeaveStatus, getStatusColor, openStatusDialog }) => {
+const HRLeavesTable = ({ leaves, updateLeaveStatus, getStatusColor, openStatusDialog, onDeleteLeave }) => {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full bg-background rounded-md overflow-hidden">
@@ -395,7 +397,7 @@ const HRLeavesTable = ({ leaves, updateLeaveStatus, getStatusColor, openStatusDi
                     {leave.status}
                   </Badge>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 flex items-center gap-2"> {/* Added flex and gap */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm">
@@ -414,6 +416,9 @@ const HRLeavesTable = ({ leaves, updateLeaveStatus, getStatusColor, openStatusDi
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDeleteLeave(leave.id)}> {/* Delete button */}
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </td>
               </tr>
             ))
@@ -443,7 +448,7 @@ const LeaveStatusDialog = ({ isOpen, onOpenChange, leave, newStatus, onConfirm }
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>Confirm</AlertDialogAction>
+          <AlertDialogAction onClick={onConfirm} style={{ backgroundColor: '#01739d' }}>Confirm</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -476,6 +481,9 @@ export default function Dashboard() {
   const [isLeaveStatusDialogOpen, setIsLeaveStatusDialogOpen] = useState(false);
   const [selectedLeave, setSelectedLeave] = useState(null);
   const [newLeaveStatus, setNewLeaveStatus] = useState("");
+  // State for HR leave deletion
+  const [isLeaveDeleteDialogOpen, setIsLeaveDeleteDialogOpen] = useState(false);
+  const [leaveToDeleteId, setLeaveToDeleteId] = useState(null);
 
 
   // Handle authentication check on dashboard load
@@ -486,7 +494,7 @@ export default function Dashboard() {
         parseScript.src = 'https://unpkg.com/parse/dist/parse.min.js';
         parseScript.onload = () => {
             // Initialize Parse (only if not already initialized globally)
-            if (typeof window !== 'undefined' && !window.Parse.applicationId) {
+            if (typeof window !== 'undefined' && window.Parse && !window.Parse.applicationId) {
                 window.Parse.initialize("QGvrhwxOhWwRe1ljUk4uyWj7UA7xjxEDwP1vhdsw", "jh0aKxm3H9f62YisAgvLDI1cpF7DfIySlXgwGjcS");
                 window.Parse.serverURL = 'https://parseapi.back4app.com/';
             }
@@ -728,6 +736,22 @@ export default function Dashboard() {
     setIsLeaveStatusDialogOpen(false);
     setSelectedLeave(null);
     setNewLeaveStatus("");
+  };
+
+  // Function to delete a leave request
+  const deleteLeave = (leaveId) => {
+    const updatedAppData = { ...appData };
+    updatedAppData.hr = appData.hr.filter((leave) => leave.id !== leaveId);
+    setAppData(updatedAppData);
+    syncDataWithSheet("hr", { id: leaveId }, "delete");
+    setIsLeaveDeleteDialogOpen(false); // Close the dialog after deletion
+    setLeaveToDeleteId(null); // Clear the ID
+  };
+
+  // Open delete leave confirmation dialog
+  const openDeleteLeaveDialog = (leaveId) => {
+    setLeaveToDeleteId(leaveId);
+    setIsLeaveDeleteDialogOpen(true);
   };
 
 
@@ -1205,6 +1229,23 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </div>
+
+                {/* New Buttons/Tiles */}
+                <div className="grid grid-cols-2 gap-4 px-2"> {/* Changed to grid for square tiles */}
+                  <Card className="border border-gray-300 dark:border-gray-700 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => router.push("/employee-dashboard")}>
+                    <CardContent className="flex flex-col items-center justify-center p-4 h-full">
+                      <LayoutDashboard className="h-8 w-8 mb-2" />
+                      <span className="text-sm font-medium text-center">Employee Dash</span>
+                    </CardContent>
+                  </Card>
+                  <Card className="border border-gray-300 dark:border-gray-700 cursor-pointer hover:bg-muted/50 transition-colors">
+                    <CardContent className="flex flex-col items-center justify-center p-4 h-full">
+                      <ClipboardList className="h-8 w-8 mb-2" />
+                      <span className="text-sm font-medium text-center">Ongoing Work</span>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             ) : (
               <div className="flex flex-col items-center space-y-6 mt-4">
@@ -1238,6 +1279,16 @@ export default function Dashboard() {
                     </div>
                   )
                 })}
+                 {/* New Buttons/Tiles for collapsed state */}
+                 <div className="flex flex-col items-center space-y-6 mt-4">
+                    <Button variant="ghost" size="icon" className="rounded-full h-10 w-10"
+                            onClick={() => router.push("/employee-dashboard")}>
+                      <LayoutDashboard className="h-5 w-5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
+                      <ClipboardList className="h-5 w-5" />
+                    </Button>
+                 </div>
               </div>
             )}
           </div>
@@ -1321,7 +1372,7 @@ export default function Dashboard() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                       {tabKey !== "hr" && ( // Only show "New Task" for task tabs
-                        <Button onClick={() => document.getElementById("new-task-form")?.scrollIntoView()}>
+                        <Button onClick={() => document.getElementById("new-task-form")?.scrollIntoView()} style={{ backgroundColor: '#01739d' }}>
                           <Plus className="h-4 w-4 mr-2" />
                           New Task
                         </Button>
@@ -1342,6 +1393,7 @@ export default function Dashboard() {
                       updateLeaveStatus={updateLeaveStatus}
                       getStatusColor={getStatusColor}
                       openStatusDialog={openStatusDialog}
+                      onDeleteLeave={openDeleteLeaveDialog} // Pass the new delete handler
                     />
                   ) : (
                     <>
@@ -1374,7 +1426,7 @@ export default function Dashboard() {
                             <p className="text-muted-foreground mb-4 max-w-md">
                               There are currently no tasks in the {tabDisplayName} section. Get started by creating a new task.
                             </p>
-                            <Button onClick={() => document.getElementById("new-task-form")?.scrollIntoView()}>
+                            <Button onClick={() => document.getElementById("new-task-form")?.scrollIntoView()} style={{ backgroundColor: '#01739d' }}>
                               <Plus className="h-4 w-4 mr-2" />
                               Add Task
                             </Button>
@@ -1424,7 +1476,7 @@ export default function Dashboard() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteTask(deleteTaskId.tab, deleteTaskId.id)}>
+            <AlertDialogAction onClick={() => deleteTask(deleteTaskId.tab, deleteTaskId.id)} style={{ backgroundColor: '#01739d' }}>
               Continue
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1497,7 +1549,7 @@ export default function Dashboard() {
                   {Object.entries(getTasksByDepartment()).map(([department, count]) => (
                     <div key={department} className="flex justify-between items-center text-sm">
                       <span>{department}</span>
-                      <Badge variant="secondary">{count} tasks</Badge>
+                      <Badge variant="secondary">{count} tasks}</Badge>
                     </div>
                   ))}
                 </div>
@@ -1515,6 +1567,24 @@ export default function Dashboard() {
         newStatus={newLeaveStatus}
         onConfirm={handleConfirmLeaveStatusChange}
       />
+
+      {/* Delete Leave Confirmation Dialog */}
+      <AlertDialog open={isLeaveDeleteDialogOpen} onOpenChange={setIsLeaveDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this leave request.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteLeave(leaveToDeleteId)} style={{ backgroundColor: '#01739d' }}>
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -1,13 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Briefcase, AlertCircle, Eye, EyeOff } from "lucide-react"
+import {
+  Button,
+  TextField,
+  Typography,
+  Card,
+  CardContent,
+  CardHeader,
+  CardActions,
+  Alert,
+  IconButton,
+  Box,
+  Link,
+  ThemeProvider,
+  createTheme,
+  CssBaseline
+} from "@mui/material"
+import { AlertCircle, Eye, EyeOff } from "lucide-react"
 import Parse from 'parse'
 
 // Initialize Parse if not already initialized
@@ -15,6 +26,38 @@ if (!Parse.applicationId) {
   Parse.initialize("QGvrhwxOhWwRe1ljUk4uyWj7UA7xjxEDwP1vhdsw", "jh0aKxm3H9f62YisAgvLDI1cpF7DfIySlXgwGjcS");
   Parse.serverURL = 'https://parseapi.back4app.com/';
 }
+
+// Create a custom Material UI theme
+const theme = createTheme({
+  shape: {
+    borderRadius: 12, // Apply a global border radius for rounded corners
+  },
+  components: {
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: 16, // More pronounced rounding for the card
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8, // Slightly less rounded for buttons than card
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 8, // Rounded corners for text fields
+          },
+        },
+      },
+    },
+  },
+});
 
 export default function LoginPage() {
   const router = useRouter()
@@ -24,9 +67,67 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
+  // Effect to check for existing session on component mount
+  useEffect(() => {
+    const checkSession = async () => {
+      setIsLoading(true);
+      try {
+        const currentUser = Parse.User.current();
+        if (currentUser) {
+          await currentUser.fetch();
+          const storedLoginTime = localStorage.getItem("inventureLoginTime");
+          if (storedLoginTime) {
+            const loginTimestamp = parseInt(storedLoginTime, 10);
+            const oneHour = 60 * 60 * 1000;
+            if (Date.now() - loginTimestamp > oneHour) {
+              await Parse.User.logOut();
+              localStorage.removeItem("inventureLoginTime");
+              console.log("Session expired. User logged out.");
+              setIsLoading(false);
+              return;
+            }
+          }
+
+          console.log("User already logged in:", currentUser.get('username') || currentUser.get('email'));
+          const accessLevel = currentUser.get("Acess_level");
+          if (accessLevel === "Admin") {
+            router.replace("/dashboard");
+          } else {
+            router.replace("/employee-dashboard");
+          }
+        }
+      } catch (err) {
+        console.error("Error checking session or session expired:", err);
+        await Parse.User.logOut();
+        localStorage.removeItem("inventureLoginTime");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkSession();
+  }, [router]);
+
+  // Effect to disable browser back button
+  useEffect(() => {
+    // Push a new state to the history stack to prevent going back to the previous page
+    // This effectively makes the login page the "first" page in the history for this session
+    window.history.pushState(null, document.title, window.location.href);
+    window.addEventListener('popstate', function(event) {
+      // On popstate (when back button is pressed), push the current state again
+      // to keep the user on the login page.
+      window.history.pushState(null, document.title, window.location.href);
+    });
+
+    // Cleanup the event listener when the component unmounts
+    return () => {
+      window.removeEventListener('popstate', () => {});
+    };
+  }, []); // Empty dependency array ensures this runs only once on mount
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError("") // Clear previous errors
+    setError("")
 
     if (!email || !password) {
       setError("Please enter both email and password")
@@ -38,23 +139,19 @@ export default function LoginPage() {
       return
     }
 
-    setIsLoading(true) // Start loading
+    setIsLoading(true)
 
     try {
-      // Attempt to log in with Parse
       const user = await Parse.User.logIn(email, password)
       console.log("User logged in successfully:", user)
 
-      // Set a flag in local storage for persistent login state
-      localStorage.setItem("inventureLoggedIn", "true")
+      localStorage.setItem("inventureLoginTime", Date.now().toString());
 
-      // Fetch the current user to get custom fields like 'Acess_level'
       const currentUser = await Parse.User.currentAsync()
       const accessLevel = currentUser?.get("Acess_level")
 
       console.log("User access level:", accessLevel)
 
-      // Redirect based on access level
       if (accessLevel === "Admin") {
         router.push("/dashboard")
       } else {
@@ -62,117 +159,147 @@ export default function LoginPage() {
       }
 
     } catch (parseError) {
-      // Handle Parse specific errors
       console.error("Error during Back4App login:", parseError)
       setError(parseError.message || "An unexpected error occurred during login. Please try again.")
     } finally {
-      setIsLoading(false) // End loading
+      setIsLoading(false)
     }
   }
 
-  // Toggle password visibility in the input field
   const togglePasswordVisibility = () => {
     setShowPassword((prev) => !prev)
   }
 
+  const currentYear = new Date().getFullYear();
+
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-background/95">
-      {/* Navbar with Logo */}
-      <nav className="w-full bg-background/80 backdrop-blur-sm border-b p-4 flex items-center justify-start">
-        <img src="/Inventurelogo1.png" alt="Inventure Logo" className="h-8 w-auto" />
-      </nav>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          backgroundColor: "#EEF6FF",
+        }}
+      >
+        {/* Navbar with Logo */}
+        <Box
+          sx={{
+            width: "100%",
+            backgroundColor: "white",
+            borderBottom: "1px solid rgba(0, 0, 0, 0.12)",
+            p: 2,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-start",
+          }}
+        >
+          <img src="/Inventurelogo1.png" alt="Inventure Logo" style={{ height: 32, width: "auto" }} />
+        </Box>
 
-      <div className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          {/* Removed the old briefcase icon div to replace with the logo in navbar */}
-          {/* <div className="flex justify-center mb-6">
-            <div className="rounded-full bg-primary/10 p-4">
-              <Briefcase className="h-10 w-10 text-primary" />
-            </div>
-          </div> */}
-
-          <Card className="backdrop-blur-sm bg-card/50 border-muted">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold text-center">Inventure Dashboard</CardTitle>
-              <CardDescription className="text-center">Enter your credentials to access your dashboard</CardDescription>
-            </CardHeader>
+        <Box
+          sx={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column", // Changed to column to stack elements vertically
+            alignItems: "center",
+            justifyContent: "center",
+            p: 2,
+            gap: 2, // Added gap between cards
+          }}
+        >
+          <Card
+            sx={{
+              width: "100%",
+              maxWidth: 400,
+              backgroundColor: "white",
+              boxShadow: 3,
+            }}
+          >
+            <CardHeader
+              title={<Typography variant="h5" component="div" align="center" sx={{ fontWeight: 'bold' }}>Inventure Dashboard Login</Typography>}
+              sx={{ pt: 3 }}
+            />
 
             <CardContent>
               {error && (
-                <Alert variant="destructive" className="mb-4">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
+                <Alert severity="error" icon={<AlertCircle fontSize="inherit" />} sx={{ mb: 2 }}>
+                  {error}
                 </Alert>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="name@company.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
+              <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <TextField
+                  id="email"
+                  label="Email"
+                  type="email"
+                  placeholder="name.lastname@inventure.mu"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  fullWidth
+                  variant="outlined"
+                />
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password">Password</Label>
-                    <Button variant="link" className="p-0 h-auto text-xs" type="button">
-                      Forgot password?
-                    </Button>
-                  </div>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={togglePasswordVisibility}
-                      className="absolute inset-y-0 right-0 h-full px-3 flex items-center justify-center"
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
-                    </Button>
-                  </div>
-                </div>
+                <TextField
+                  id="password"
+                  label="Password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  fullWidth
+                  variant="outlined"
+                  InputProps={{
+                    endAdornment: (
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={togglePasswordVisibility}
+                        edge="end"
+                      >
+                        {showPassword ? <EyeOff /> : <Eye />}
+                      </IconButton>
+                    ),
+                  }}
+                />
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Link component="button" variant="body2" onClick={() => console.log("Forgot password clicked")}>
+                    Forgot password?
+                  </Link>
+                </Box>
 
                 <Button
                   type="submit"
-                  className="w-full"
+                  variant="contained"
+                  fullWidth
                   disabled={isLoading}
-                  style={{ backgroundColor: '#01739d' }} // Apply custom background color
+                  sx={{ mt: 2, backgroundColor: '#01739d', '&:hover': { backgroundColor: '#005f7c' } }}
                 >
                   {isLoading ? "Logging in..." : "Login"}
                 </Button>
               </form>
             </CardContent>
 
-            <CardFooter className="flex flex-col space-y-4">
-              <div className="text-sm text-center text-muted-foreground">
+            <CardActions sx={{ flexDirection: "column", pb: 3 }}>
+              <Typography variant="body2" color="text.secondary" align="center">
                 <span>Don't have an account? </span>
-                <Button variant="link" className="p-0 h-auto" type="button">
+                <Link component="button" variant="body2" onClick={() => console.log("Contact administrator clicked")}>
                   Contact your administrator
-                </Button>
-              </div>
-            </CardFooter>
+                </Link>
+              </Typography>
+            </CardActions>
           </Card>
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>© 2025 Inventure Inc. All rights reserved.</p>
-          </div>
-        </div>
-      </div>
-    </div>
+          <Box sx={{ mt: 0, textAlign: "center", width: '100%', maxWidth: 400 }}>
+            <Typography variant="body2" color="text.secondary">
+              © {currentYear} Inventure Inc. All rights reserved.
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+    </ThemeProvider>
   )
 }
+

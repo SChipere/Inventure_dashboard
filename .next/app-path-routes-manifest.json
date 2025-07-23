@@ -1,10 +1,10 @@
 {
   "/_not-found/page": "/_not-found",
   "/api/proxy/route": "/api/proxy",
-  "/admin/settings/page": "/admin/settings",
-  "/login/page": "/login",
-  "/page": "/",
-  "/profile/page": "/profile",
+  "/dashboard/page": "/dashboard",
   "/employee-dashboard/page": "/employee-dashboard",
-  "/dashboard/page": "/dashboard"
+  "/login/page": "/login",
+  "/profile/page": "/profile",
+  "/admin/settings/page": "/admin/settings",
+  "/page": "/"
 }

@@ -19,10 +19,14 @@ import {
   LogOut,
   Loader2,
   Send,
-  CalendarDays,
   Building,
   Edit, // Added for edit button on leave card
   Trash2, // Added for delete button on leave card
+  Laptop, // Icon for Technology Services
+  DollarSign, // Icon for Sales
+  PlusCircle, // Added for add button
+  User, // <--- Added for profile icon
+  BookOpen, // New icon for policy overview
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -62,6 +66,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
+} from "@/components/ui/table"
+
 
 import Parse from 'parse'; // Import Parse SDK
 
@@ -69,7 +77,7 @@ import Parse from 'parse'; // Import Parse SDK
 // It's highly recommended to initialize Parse in a central location like _app.tsx
 // to ensure it's done only once for the entire application.
 if (!Parse.applicationId) { // Prevent re-initialization if hot-reloading
-  Parse.initialize("QGvrhwxOhWwRe1ljUk4uyWj7UA7xjxEDwP1vhdsw", "jh0aKxm3H9f62YisAgvLDI1cpF7DfIySlXgwGjcF");
+  Parse.initialize("QGvrhwxOhWwRe1ljUk4uyWj7UA7xjx uncomment to re-enable", "jh0aKxm3H9f62YisAgvLDI1cpF7DfIySlXgwGjcF uncomment to re-enable");
   Parse.serverURL = 'https://parseapi.back4app.com/';
 }
 
@@ -111,6 +119,19 @@ export type LeaveApplication = {
   startDate?: string | null
   endDate?: string | null
   creatorId: string // The Parse user ID who created this leave request
+}
+
+export type SalesEntry = {
+  id: string; // Client-side unique ID
+  objectId?: string; // Backend/Sheet unique ID if available
+  Name: string;
+  Country: string;
+  Business: string;
+  "Target/client": string;
+  "Contact Name": string;
+  Telephone: string;
+  Email: string;
+  Wallet: string;
 }
 
 // Circular Progress Ring Component
@@ -238,25 +259,31 @@ function LeaveApplicationForm({ onSubmit, initialData = null, onCancel = null, i
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="name">First Name*</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter your first name"
-                className="mt-1"
-                required
-              />
+              <div className="relative">
+                <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter your first name"
+                  className="mt-1 pl-9" // Add left padding for icon
+                  required
+                />
+              </div>
             </div>
             <div>
               <Label htmlFor="surname">Last Name*</Label>
-              <Input
-                id="surname"
-                value={surname}
-                onChange={(e) => setSurname(e.target.value)}
-                placeholder="Enter your last name"
-                className="mt-1"
-                required
-              />
+              <div className="relative">
+                <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="surname"
+                  value={surname}
+                  onChange={(e) => setSurname(e.target.value)}
+                  placeholder="Enter your last name"
+                  className="mt-1 pl-9" // Add left padding for icon
+                  required
+                />
+              </div>
             </div>
           </div>
 
@@ -309,7 +336,7 @@ function LeaveApplicationForm({ onSubmit, initialData = null, onCancel = null, i
             <Label htmlFor="leaveType">Type of Leave*</Label>
             <Select value={leaveType} onValueChange={setLeaveType}>
               <SelectTrigger id="leaveType" className="w-full mt-1">
-                <SelectValue placeholder="Select type of leave" />
+                <SelectValue placeholder="Select type of leave" className="pl-9" /> {/* Adjust padding */}
               </SelectTrigger>
               <SelectContent>
                 {leaveTypeOptions.map((option) => (
@@ -325,7 +352,7 @@ function LeaveApplicationForm({ onSubmit, initialData = null, onCancel = null, i
                 Cancel
               </Button>
             )}
-            <Button type="submit">
+            <Button type="submit" className="bg-[#01739d] hover:bg-[#01739d]/90 text-white"> {/* Modified */}
               <Send className="mr-2 h-4 w-4" />
               {isEdit ? "Save Changes" : "Submit Leave Application"}
             </Button>
@@ -405,6 +432,144 @@ function LeaveCard({ leave, currentUserUid, onEdit, onDelete }) {
         </Badge>
       </CardFooter>
     </Card>
+  );
+}
+
+// Sales Entry Form Component
+function SalesForm({ onSubmit, initialData = null, onCancel = null, isEdit = false }) {
+  const [name, setName] = useState(initialData?.Name || "");
+  const [country, setCountry] = useState(initialData?.Country || "");
+  const [business, setBusiness] = useState(initialData?.Business || "");
+  const [targetClient, setTargetClient] = useState(initialData?.["Target/client"] || "");
+  const [contactName, setContactName] = useState(initialData?.["Contact Name"] || "");
+  const [telephone, setTelephone] = useState(initialData?.Telephone || "");
+  const [email, setEmail] = useState(initialData?.Email || "");
+  const [wallet, setWallet] = useState(initialData?.Wallet || "");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !country || !business || !targetClient || !contactName || !telephone || !email || !wallet) {
+      console.error("Please fill in all required fields for sales entry.");
+      return;
+    }
+
+    const salesEntry: Omit<SalesEntry, 'id'> = {
+      Name: name,
+      Country: country,
+      Business: business,
+      "Target/client": targetClient,
+      "Contact Name": contactName,
+      Telephone: telephone,
+      Email: email,
+      Wallet: wallet,
+    };
+    onSubmit(salesEntry);
+    if (onCancel) onCancel();
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="salesName">Name*</Label>
+          <Input id="salesName" value={name} onChange={(e) => setName(e.target.value)} required />
+        </div>
+        <div>
+          <Label htmlFor="salesCountry">Country*</Label>
+          <Input id="salesCountry" value={country} onChange={(e) => setCountry(e.target.value)} required />
+        </div>
+      </div>
+      <div>
+        <Label htmlFor="salesBusiness">Business*</Label>
+        <Input id="salesBusiness" value={business} onChange={(e) => setBusiness(e.target.value)} required />
+      </div>
+      <div>
+        <Label htmlFor="salesTargetClient">Target/Client*</Label>
+        <Input id="salesTargetClient" value={targetClient} onChange={(e) => setTargetClient(e.target.value)} required />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="salesContactName">Contact Name*</Label>
+          <Input id="salesContactName" value={contactName} onChange={(e) => setContactName(e.target.value)} required />
+        </div>
+        <div>
+          <Label htmlFor="salesTelephone">Telephone*</Label>
+          <Input id="salesTelephone" value={telephone} onChange={(e) => setTelephone(e.target.value)} required />
+        </div>
+      </div>
+      <div>
+        <Label htmlFor="salesEmail">Email*</Label>
+        <Input id="salesEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+      </div>
+      <div>
+        <Label htmlFor="salesWallet">Wallet*</Label>
+        <Input id="salesWallet" value={wallet} onChange={(e) => setWallet(e.target.value)} required />
+      </div>
+      <DialogFooter>
+        {isEdit && (
+          <Button variant="outline" onClick={onCancel} className="mr-2">
+            Cancel
+          </Button>
+        )}
+        <Button type="submit" className="bg-[#01739d] hover:bg-[#01739d]/90 text-white"> {/* Modified */}
+          <Send className="mr-2 h-4 w-4" />
+          {isEdit ? "Save Changes" : "Add Sales Entry"}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+// Sales Table Component
+function SalesTable({ salesData, onEdit, onDelete }) {
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Country</TableHead>
+            <TableHead>Business</TableHead>
+            <TableHead>Target/Client</TableHead>
+            <TableHead>Contact Name</TableHead>
+            <TableHead>Telephone</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Wallet</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {salesData.length > 0 ? (
+            salesData.map((entry) => (
+              <TableRow key={entry.id}>
+                <TableCell>{entry.Name}</TableCell>
+                <TableCell>{entry.Country}</TableCell>
+                <TableCell>{entry.Business}</TableCell>
+                <TableCell>{entry["Target/client"]}</TableCell>
+                <TableCell>{entry["Contact Name"]}</TableCell>
+                <TableCell>{entry.Telephone}</TableCell>
+                <TableCell>{entry.Email}</TableCell>
+                <TableCell>{entry.Wallet}</TableCell>
+                <TableCell className="text-right">
+                  <Button variant="ghost" size="sm" onClick={() => onEdit(entry)} className="mr-2">
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => onDelete(entry.id)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={9} className="text-center py-4 text-muted-foreground">
+                No sales entries found.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 
@@ -627,7 +792,7 @@ function EmployeeTaskCard({ task, tabKey, onComplete }) {
           {tabKey.charAt(0).toUpperCase() + tabKey.slice(1)}
         </Badge>
         {task.status !== "completed" && task.status !== "Completed" && (
-            <Button variant="outline" size="sm" onClick={() => onComplete(task.id)}>
+            <Button variant="outline" size="sm" className="bg-[#01739d] hover:bg-[#01739d]/90 text-white" onClick={() => onComplete(task.id)}> {/* Added onClick */}
                 Mark Complete
             </Button>
         )}
@@ -639,13 +804,15 @@ function EmployeeTaskCard({ task, tabKey, onComplete }) {
 export default function EmployeeDashboard() {
   const router = useRouter()
   const [theme, setTheme] = useState("light")
-  const [activeTab, setActiveTab] = useState("accounting")
+  const [activeTab, setActiveTab] = useState("hr") // Default to HR as it's always accessible
   const [tasks, setTasks] = useState<Record<string, TaskType[]>>({
     accounts: [],
     tasks: [],
     compliance: [],
-    payments: [],
+    payments: [], // This will now represent Corporate Finance tasks
     results: [], // Maps to Administrative tasks
+    technologyServices: [], // New state for Technology Services tasks
+    sales: [], // New state for Sales tasks
   })
   const [isLoading, setIsLoading] = useState(true)
   const [currentUser, setCurrentUser] = useState("Employee") // Default, updated by Parse
@@ -654,33 +821,79 @@ export default function EmployeeDashboard() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
   const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>([])
+  const [salesEntries, setSalesEntries] = useState<SalesEntry[]>([]); // State for sales entries
+
+  const [userAccessibleTabs, setUserAccessibleTabs] = useState<string[]>([]); // New state for accessible tabs
 
   const [editingLeave, setEditingLeave] = useState<LeaveApplication | null>(null);
   const [isEditLeaveDialogOpen, setIsEditLeaveDialogOpen] = useState(false);
   const [deleteLeaveId, setDeleteLeaveId] = useState<string | null>(null);
   const [isDeleteLeaveDialogOpen, setIsDeleteLeaveDialogOpen] = useState(false);
 
+  const [isAddSalesDialogOpen, setIsAddSalesDialogOpen] = useState(false);
+  const [editingSalesEntry, setEditingSalesEntry] = useState<SalesEntry | null>(null);
+  const [isEditSalesDialogOpen, setIsEditSalesDialogOpen] = useState(false);
+  const [deleteSalesEntryId, setDeleteSalesEntryId] = useState<string | null>(null);
+  const [isDeleteSalesDialogOpen, setIsDeleteSalesDialogOpen] = useState(false);
 
-  // Handle authentication check on dashboard load
+
+  // Mapping from Back4App Employee class columns to tab keys
+  const tabAccessMapping = {
+    "Accounting": "accounting",
+    "Office_Management": "office-management",
+    "Compliance": "compliance",
+    "Corporate_Finance": "inventure-pay", // Renamed to Corporate Finance
+    "Admin_Task": "administrative-tasks",
+    "Technology_Services": "technology-services", // New tab mapping
+    "Sales": "sales", // New tab mapping
+  };
+
+  // Handle authentication check and fetch user access data on dashboard load
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuthAndFetchAccess = async () => {
+      setIsLoading(true);
       try {
-        const currentUser = Parse.User.current();
-        // If no current Parse user, redirect to login
-        if (!currentUser) {
+        const currentUserParse = Parse.User.current();
+        if (!currentUserParse) {
           router.push("/login");
-        } else {
-          // Set current user's display name from Parse
-          setCurrentUser(currentUser.get('username') || currentUser.get('email') || "Employee");
-          setCurrentUserUid(currentUser.id); // Set the Parse User's objectId
+          return;
         }
+
+        setCurrentUser(currentUserParse.get('username') || currentUserParse.get('email') || "Employee");
+        setCurrentUserUid(currentUserParse.id);
+
+        // Fetch user's access permissions from "Employees" class
+        const Employee = Parse.Object.extend("Employees");
+        const query = new Parse.Query(Employee);
+        query.equalTo("Email", currentUserParse.get('email')); // Assuming email is unique identifier
+
+        const employeeResult = await query.first();
+
+        let accessibleTabs: string[] = ["hr"]; // HR tab is always accessible
+
+        if (employeeResult) {
+          for (const back4AppColumn in tabAccessMapping) {
+            if (employeeResult.get(back4AppColumn)?.toLowerCase() === "yes") {
+              accessibleTabs.push(tabAccessMapping[back4AppColumn]);
+            }
+          }
+        }
+        setUserAccessibleTabs(accessibleTabs);
+
+        // Set initial active tab: if previous activeTab is not accessible, default to first accessible tab (which will be 'hr' or the first one found)
+        if (!accessibleTabs.includes(activeTab)) {
+            setActiveTab(accessibleTabs[0] || "hr"); // Fallback to "hr" if no tabs are accessible (shouldn't happen with "hr" always included)
+        }
+
       } catch (error) {
-        console.error("Error checking Parse session:", error);
+        console.error("Error checking Parse session or fetching employee data:", error);
         router.push("/login"); // Redirect on error as well
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    checkAuth(); // Call the async function
+    checkAuthAndFetchAccess();
 
     // Theme preference check
     if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
@@ -779,8 +992,6 @@ export default function EmployeeDashboard() {
         surname: application.surname || "",
         daysOfLeave: application.daysOfLeave || "",
         leaveType: application.leaveType || "",
-        startDate: application.startDate || "",
-        endDate: application.endDate || "",
         dateApplied: application.dateApplied || "",
         status: application.status || "pending",
         creatorId: application.creatorId || currentUserUid || "", // Ensure creatorId is sent
@@ -807,19 +1018,57 @@ export default function EmployeeDashboard() {
     }
   };
 
+  // Function to sync sales entry changes with the Google Sheet via proxy
+  const syncSalesEntryWithSheet = async (entry: Partial<SalesEntry>, action: "add" | "update" | "delete") => {
+    try {
+      const apiSalesEntry = {
+        ...entry,
+        // Ensure all fields are present for the proxy
+        Name: entry.Name || "",
+        Country: entry.Country || "",
+        Business: entry.Business || "",
+        "Target/client": entry["Target/client"] || "",
+        "Contact Name": entry["Contact Name"] || "",
+        Telephone: entry.Telephone || "",
+        Email: entry.Email || "",
+        Wallet: entry.Wallet || "",
+      };
+
+      if (action !== "add") {
+          delete apiSalesEntry.id;
+      }
+
+      const response = await fetch(`/api/proxy?tab=sales&action=${action}`, {
+        method: "POST",
+        body: JSON.stringify(apiSalesEntry),
+        headers: { "Content-Type": "application/json" },
+      });
+      const result = await response.text();
+      console.log(`Sales ${action.toUpperCase()} SUCCESS:`, result);
+      await fetchSalesEntries(); // Re-fetch sales entries after sync
+    } catch (error) {
+      console.error(`Sales ${action.toUpperCase()} ERROR:`, error);
+    }
+  };
+
+
   // Load tasks and leave applications from Google Sheets via the proxy API
   useEffect(() => {
     async function loadData() {
-      setIsLoading(true);
-      await Promise.all([
-        fetchTasks(),
-        fetchLeaveApplications()
-      ]);
-      setIsLoading(false);
+      // Only load data if userAccessibleTabs is populated and not empty
+      if (userAccessibleTabs.length > 0) {
+        setIsLoading(true);
+        await Promise.all([
+          fetchTasks(),
+          fetchLeaveApplications(),
+          fetchSalesEntries(),
+        ]);
+        setIsLoading(false);
+      }
     }
 
     loadData();
-  }, [currentUserUid]); // Depend on currentUserUid to ensure user is logged in before fetching data
+  }, [currentUserUid, userAccessibleTabs]); // Depend on currentUserUid and userAccessibleTabs
 
   const fetchTasks = async () => {
     try {
@@ -830,6 +1079,7 @@ export default function EmployeeDashboard() {
         console.error("Error response from proxy (tasks):", errorText);
         setTasks({
           accounts: [], tasks: [], compliance: [], payments: [], results: [],
+          technologyServices: [], sales: [] // Include new task arrays in error state
         });
         return;
       }
@@ -857,6 +1107,7 @@ export default function EmployeeDashboard() {
       console.error("Error loading tasks from proxy:", error);
       setTasks({
         accounts: [], tasks: [], compliance: [], payments: [], results: [],
+        technologyServices: [], sales: [] // Include new task arrays in error state
       });
     }
   };
@@ -895,6 +1146,39 @@ export default function EmployeeDashboard() {
     } catch (error) {
         console.error("Error fetching leave applications from proxy:", error);
         setLeaveApplications([]);
+    }
+  };
+
+  const fetchSalesEntries = async () => {
+    try {
+      const response = await fetch("/api/proxy?tab=sales");
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Error response from proxy (sales):", errorText);
+        setSalesEntries([]);
+        return;
+      }
+      const data = await response.json();
+      if (data.sales && Array.isArray(data.sales)) {
+        const normalizedSalesData: SalesEntry[] = data.sales.map((entry: any) => ({
+          id: entry.id || entry.objectId || Date.now() + Math.random(),
+          objectId: entry.objectId || entry.id,
+          Name: entry.Name || "",
+          Country: entry.Country || "",
+          Business: entry.Business || "",
+          "Target/client": entry["Target/client"] || "",
+          "Contact Name": entry["Contact Name"] || "",
+          Telephone: entry.Telephone || "",
+          Email: entry.Email || "",
+          Wallet: entry.Wallet || "",
+        }));
+        setSalesEntries(normalizedSalesData);
+      } else {
+        setSalesEntries([]);
+      }
+    } catch (error) {
+      console.error("Error fetching sales entries from proxy:", error);
+      setSalesEntries([]);
     }
   };
 
@@ -984,10 +1268,14 @@ export default function EmployeeDashboard() {
         return <ListTodo className="h-5 w-5" />
       case "compliance":
         return <FileCheck className="h-5 w-5" />
-      case "inventure-pay":
+      case "inventure-pay": // This is now Corporate Finance
         return <CreditCard className="h-5 w-5" />
       case "administrative-tasks":
         return <BarChart3 className="h-5 w-5" />
+      case "technology-services": // New tab icon
+        return <Laptop className="h-5 w-5" />
+      case "sales": // New tab icon
+        return <DollarSign className="h-5 w-5" />
       case "hr":
         return <Building className="h-5 w-5" />
       default:
@@ -1057,6 +1345,58 @@ export default function EmployeeDashboard() {
     }
     setIsDeleteLeaveDialogOpen(false);
     setDeleteLeaveId(null);
+  };
+
+  // Handle adding a new sales entry
+  const handleAddSalesEntry = async (entryData: Omit<SalesEntry, 'id'>) => {
+    const newEntry: SalesEntry = {
+      ...entryData,
+      id: Date.now().toString(), // Client-side unique ID
+    };
+    setSalesEntries((prev) => [...prev, newEntry]);
+    await syncSalesEntryWithSheet(newEntry, "add");
+    setIsAddSalesDialogOpen(false);
+  };
+
+  // Handle editing a sales entry
+  const handleEditSales = (entry: SalesEntry) => {
+    setEditingSalesEntry(entry);
+    setIsEditSalesDialogOpen(true);
+  };
+
+  const handleSaveSalesChanges = async (updatedData: Omit<SalesEntry, 'id'>) => {
+    if (editingSalesEntry) {
+      const updatedEntry: SalesEntry = {
+        ...editingSalesEntry,
+        ...updatedData,
+      };
+      setSalesEntries((prev) =>
+        prev.map((e) => (e.id === updatedEntry.id ? updatedEntry : e))
+      );
+      await syncSalesEntryWithSheet(updatedEntry, "update");
+      setIsEditSalesDialogOpen(false);
+      setEditingSalesEntry(null);
+    }
+  };
+
+  // Handle deleting a sales entry
+  const handleDeleteSalesClick = (entryId: string) => {
+    setDeleteSalesEntryId(entryId);
+    setIsDeleteSalesDialogOpen(true);
+  };
+
+  const confirmDeleteSales = async () => {
+    if (deleteSalesEntryId) {
+      const entryToDelete = salesEntries.find(e => e.id === deleteSalesEntryId);
+      if (entryToDelete) {
+        setSalesEntries((prev) => prev.filter((e) => e.id !== deleteSalesEntryId));
+        await syncSalesEntryWithSheet({ id: deleteSalesEntryId, objectId: entryToDelete.objectId }, "delete");
+      } else {
+        console.error("Attempted to delete invalid sales entry ID.");
+      }
+    }
+    setIsDeleteSalesDialogOpen(false);
+    setDeleteSalesEntryId(null);
   };
 
 
@@ -1150,15 +1490,10 @@ export default function EmployeeDashboard() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Avatar className="cursor-pointer">
-                <AvatarImage src="/placeholder.svg?height=40&width=40" />
-                <AvatarFallback>
-                  {currentUser
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
-                </AvatarFallback>
-              </Avatar>
+              {/* Changed Avatar to Button with User icon */}
+              <Button variant="ghost" size="icon" className="cursor-pointer">
+                <User className="h-5 w-5" />
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
@@ -1298,192 +1633,311 @@ export default function EmployeeDashboard() {
       {/* Main Content */}
       <main className="p-4">
         <Tabs
-          defaultValue="accounting"
+          defaultValue="hr" // Changed default value to "hr" as it's always accessible
           value={activeTab}
           onValueChange={setActiveTab}
           className="w-full max-w-7xl mx-auto"
         >
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6">
-            <TabsTrigger value="accounting" className="flex items-center gap-2">
-              {getTabIcon("accounting")}
-              <span className="hidden sm:inline">Accounting</span>
-            </TabsTrigger>
-            <TabsTrigger value="office-management" className="flex items-center gap-2">
-              {getTabIcon("office-management")}
-              <span className="hidden sm:inline">Office Mgmt</span>
-            </TabsTrigger>
-            <TabsTrigger value="compliance" className="flex items-center gap-2">
-              {getTabIcon("compliance")}
-              <span className="hidden sm:inline">Compliance</span>
-            </TabsTrigger>
-            <TabsTrigger value="inventure-pay" className="flex items-center gap-2">
-              {getTabIcon("inventure-pay")}
-              <span className="hidden sm:inline">Inventure Pay</span>
-            </TabsTrigger>
-            <TabsTrigger value="administrative-tasks" className="flex items-center gap-2">
-              {getTabIcon("administrative-tasks")}
-              <span className="hidden sm:inline">Admin Tasks</span>
-            </TabsTrigger>
-            <TabsTrigger value="hr" className="flex items-center gap-2">
-              {getTabIcon("hr")}
-              <span className="hidden sm:inline">HR</span>
-            </TabsTrigger>
+          <TabsList className="flex w-full flex-nowrap justify-between gap-2 p-2">
+            {userAccessibleTabs.map((tabKey) => (
+              <TabsTrigger
+                key={tabKey}
+                value={tabKey}
+                className="flex flex-1 flex-shrink-0 basis-0 items-center gap-2 whitespace-nowrap"
+              >
+                {getTabIcon(tabKey)}
+                <span className="hidden sm:inline">
+                  {tabKey === "accounting" && "Accounting"}
+                  {tabKey === "office-management" && "Office Mgmt"}
+                  {tabKey === "compliance" && "Compliance"}
+                  {tabKey === "inventure-pay" && "Corporate Finance"} {/* Changed display name */}
+                  {tabKey === "administrative-tasks" && "Admin Tasks"}
+                  {tabKey === "technology-services" && "Technology Services"} {/* New tab display name */}
+                  {tabKey === "sales" && "Sales"} {/* New tab display name */}
+                  {tabKey === "hr" && "HR"}
+                </span>
+              </TabsTrigger>
+            ))}
           </TabsList>
 
-          {/* Accounting Tab */}
-          <TabsContent value="accounting" className="mt-6">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold">Accounting Tasks</h2>
-              <p className="text-muted-foreground">
-                {filterTasks(tasks.accounts).length} tasks
-                {filterByUser && ` assigned to you`}
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filterTasks(tasks.accounts).length > 0 ? (
-                filterTasks(tasks.accounts).map((task) => (
-                  <EmployeeTaskCard key={task.id} task={task} tabKey="accounts" onComplete={(taskId) => markTaskComplete("accounts", taskId)} />
-                ))
-              ) : (
-                <div className="col-span-full text-center py-12">
-                  <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No accounting tasks found</h3>
-                  <p className="text-muted-foreground">
-                    {filterByUser ? "No tasks assigned to you in this category" : "No tasks available in this category"}
-                  </p>
-                </div>
-              )}
-            </div>
-          </TabsContent>
+          {userAccessibleTabs.includes("accounting") && (
+            <TabsContent value="accounting" className="mt-6">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold">Accounting Tasks</h2>
+                <p className="text-muted-foreground">
+                  {filterTasks(tasks.accounts).length} tasks
+                  {filterByUser && ` assigned to you`}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filterTasks(tasks.accounts).length > 0 ? (
+                  filterTasks(tasks.accounts).map((task) => (
+                    <EmployeeTaskCard key={task.id} task={task} tabKey="accounts" onComplete={(taskId) => markTaskComplete("accounts", taskId)} />
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-12">
+                    <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No accounting tasks found</h3>
+                    <p className="text-muted-foreground">
+                      {filterByUser ? "No tasks assigned to you in this category" : "No tasks available in this category"}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          )}
 
-          {/* Office Management Tab */}
-          <TabsContent value="office-management" className="mt-6">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold">Office Management Tasks</h2>
-              <p className="text-muted-foreground">
-                {filterTasks(tasks.tasks).length} tasks
-                {filterByUser && ` assigned to you`}
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filterTasks(tasks.tasks).length > 0 ? (
-                filterTasks(tasks.tasks).map((task) => <EmployeeTaskCard key={task.id} task={task} tabKey="tasks" onComplete={(taskId) => markTaskComplete("tasks", taskId)} />)
-              ) : (
-                <div className="col-span-full text-center py-12">
-                  <ListTodo className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No office management tasks found</h3>
-                  <p className="text-muted-foreground">
-                    {filterByUser ? "No tasks assigned to you in this category" : "No tasks available in this category"}
-                  </p>
-                </div>
-              )}
-            </div>
-          </TabsContent>
+          {userAccessibleTabs.includes("office-management") && (
+            <TabsContent value="office-management" className="mt-6">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold">Office Management Tasks</h2>
+                <p className="text-muted-foreground">
+                  {filterTasks(tasks.tasks).length} tasks
+                  {filterByUser && ` assigned to you`}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filterTasks(tasks.tasks).length > 0 ? (
+                  filterTasks(tasks.tasks).map((task) => <EmployeeTaskCard key={task.id} task={task} tabKey="tasks" onComplete={(taskId) => markTaskComplete("tasks", taskId)} />)
+                ) : (
+                  <div className="col-span-full text-center py-12">
+                    <ListTodo className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No office management tasks found</h3>
+                    <p className="text-muted-foreground">
+                      {filterByUser ? "No tasks assigned to you in this category" : "No tasks available in this category"}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          )}
 
-          {/* Compliance Tab */}
-          <TabsContent value="compliance" className="mt-6">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold">Compliance Tasks</h2>
-              <p className="text-muted-foreground">
-                {filterTasks(tasks.compliance).length} tasks
-                {filterByUser && ` assigned to you`}
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filterTasks(tasks.compliance).length > 0 ? (
-                filterTasks(tasks.compliance).map((task) => (
-                  <EmployeeTaskCard key={task.id} task={task} tabKey="compliance" onComplete={(taskId) => markTaskComplete("compliance", taskId)} />
-                ))
-              ) : (
-                <div className="col-span-full text-center py-12">
-                  <FileCheck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No compliance tasks found</h3>
-                  <p className="text-muted-foreground">
-                    {filterByUser ? "No tasks assigned to you in this category" : "No tasks available in this category"}
-                  </p>
-                </div>
-              )}
-            </div>
-          </TabsContent>
+          {userAccessibleTabs.includes("compliance") && (
+            <TabsContent value="compliance" className="mt-6">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold">Compliance Tasks</h2>
+                <p className="text-muted-foreground">
+                  {filterTasks(tasks.compliance).length} tasks
+                  {filterByUser && ` assigned to you`}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filterTasks(tasks.compliance).length > 0 ? (
+                  filterTasks(tasks.compliance).map((task) => (
+                    <EmployeeTaskCard key={task.id} task={task} tabKey="compliance" onComplete={(taskId) => markTaskComplete("compliance", taskId)} />
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-12">
+                    <FileCheck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No compliance tasks found</h3>
+                    <p className="text-muted-foreground">
+                      {filterByUser ? "No tasks assigned to you in this category" : "No tasks available in this category"}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          )}
 
-          {/* Inventure Pay Tab */}
-          <TabsContent value="inventure-pay" className="mt-6">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold">Inventure Pay Tasks</h2>
-              <p className="text-muted-foreground">
-                {filterTasks(tasks.payments).length} tasks
-                {filterByUser && ` assigned to you`}
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filterTasks(tasks.payments).length > 0 ? (
-                filterTasks(tasks.payments).map((task) => (
-                  <EmployeeTaskCard key={task.id} task={task} tabKey="payments" onComplete={(taskId) => markTaskComplete("payments", taskId)} />
-                ))
-              ) : (
-                <div className="col-span-full text-center py-12">
-                  <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No Inventure Pay tasks found</h3>
-                  <p className="text-muted-foreground">
-                    {filterByUser ? "No tasks assigned to you in this category" : "No tasks available in this category"}
-                  </p>
-                </div>
-              )}
-            </div>
-          </TabsContent>
+          {userAccessibleTabs.includes("inventure-pay") && (
+            <TabsContent value="inventure-pay" className="mt-6">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold">Corporate Finance Tasks</h2> {/* Changed display name */}
+                <p className="text-muted-foreground">
+                  {filterTasks(tasks.payments).length} tasks
+                  {filterByUser && ` assigned to you`}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filterTasks(tasks.payments).length > 0 ? (
+                  filterTasks(tasks.payments).map((task) => (
+                    <EmployeeTaskCard key={task.id} task={task} tabKey="payments" onComplete={(taskId) => markTaskComplete("payments", taskId)} />
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-12">
+                    <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No Corporate Finance tasks found</h3>
+                    <p className="text-muted-foreground">
+                      {filterByUser ? "No tasks assigned to you in this category" : "No tasks available in this category"}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          )}
 
-          {/* Administrative Tasks Tab */}
-          <TabsContent value="administrative-tasks" className="mt-6">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold">Administrative Tasks</h2>
-              <p className="text-muted-foreground">
-                {filterTasks(tasks.results).length} tasks
-                {filterByUser && ` assigned to you`}
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filterTasks(tasks.results).length > 0 ? (
-                filterTasks(tasks.results).map((task) => (
-                  <EmployeeTaskCard key={task.id} task={task} tabKey="results" onComplete={(taskId) => markTaskComplete("results", taskId)} />
-                ))
-              ) : (
-                <div className="col-span-full text-center py-12">
-                  <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No administrative tasks found</h3>
-                  <p className="text-muted-foreground">
-                    {filterByUser ? "No tasks assigned to you in this category" : "No tasks available in this category"}
-                  </p>
-                </div>
-              )}
-            </div>
-          </TabsContent>
+          {userAccessibleTabs.includes("administrative-tasks") && (
+            <TabsContent value="administrative-tasks" className="mt-6">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold">Administrative Tasks</h2>
+                <p className="text-muted-foreground">
+                  {filterTasks(tasks.results).length} tasks
+                  {filterByUser && ` assigned to you`}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filterTasks(tasks.results).length > 0 ? (
+                  filterTasks(tasks.results).map((task) => (
+                    <EmployeeTaskCard key={task.id} task={task} tabKey="results" onComplete={(taskId) => markTaskComplete("results", taskId)} />
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-12">
+                    <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No administrative tasks found</h3>
+                    <p className="text-muted-foreground">
+                      {filterByUser ? "No tasks assigned to you in this category" : "No tasks available in this category"}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          )}
 
-          {/* HR Tab */}
-          <TabsContent value="hr" className="mt-6">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold">HR Management</h2>
-              <p className="text-muted-foreground">Submit your leave applications here.</p>
-            </div>
-            {/* Display submitted leave applications (moved to top) */}
-            {leaveApplications.length > 0 && (
-              <div className="mt-8 mb-8"> {/* Added margin-bottom for spacing */}
-                <h3 className="text-xl font-bold mb-4">Your Leave Applications</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {leaveApplications.map((app) => (
-                    <LeaveCard
-                      key={app.id}
-                      leave={app}
-                      currentUserUid={currentUserUid}
-                      onEdit={handleEditLeave}
-                      onDelete={handleDeleteLeaveClick}
-                    />
-                  ))}
+          {userAccessibleTabs.includes("technology-services") && (
+            <TabsContent value="technology-services" className="mt-6">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold">Technology Services Tasks</h2>
+                <p className="text-muted-foreground">
+                  {filterTasks(tasks.technologyServices).length} tasks
+                  {filterByUser && ` assigned to you`}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filterTasks(tasks.technologyServices).length > 0 ? (
+                  filterTasks(tasks.technologyServices).map((task) => (
+                    <EmployeeTaskCard key={task.id} task={task} tabKey="technologyServices" onComplete={(taskId) => markTaskComplete("technologyServices", taskId)} />
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-12">
+                    <Laptop className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No technology services tasks found</h3>
+                    <p className="text-muted-foreground">
+                      {filterByUser ? "No tasks assigned to you in this category" : "No tasks available in this category"}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          )}
+
+          {userAccessibleTabs.includes("sales") && (
+            <TabsContent value="sales" className="mt-6">
+              <div className="mb-6 flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Sales Entries</h2>
+                <Button onClick={() => setIsAddSalesDialogOpen(true)} className="bg-[#01739d] hover:bg-[#01739d]/90 text-white"> {/* Modified */}
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add Sales Entry
+                </Button>
+              </div>
+              <SalesTable
+                salesData={salesEntries}
+                onEdit={handleEditSales}
+                onDelete={handleDeleteSalesClick}
+              />
+            </TabsContent>
+          )}
+
+          {userAccessibleTabs.includes("hr") && (
+            <TabsContent value="hr" className="mt-6">
+              <div className="relative overflow-hidden rounded-xl p-8 mb-8 bg-gradient-to-br from-[#01739d] to-[#01739d]/70 text-white shadow-lg">
+                <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("/hr-pattern.svg")', backgroundSize: 'cover' }}></div>
+                <div className="relative z-10 flex items-center mb-4">
+                  <Building className="h-10 w-10 mr-3" />
+                  <h2 className="text-3xl font-bold">HR Hub</h2>
+                </div>
+                <p className="text-lg opacity-90">
+                  Manage your leave applications and access important HR policies.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch"> {/* Added items-stretch */}
+                {/* Apply for New Leave Section */}
+                <div className="flex"> {/* Added flex */}
+                  <Card className="p-6 flex-1"> {/* Added flex-1 */}
+                    <h3 className="text-2xl font-bold mb-4 flex items-center">
+                      <Send className="mr-2 h-6 w-6 text-primary" /> Apply for New Leave
+                    </h3>
+                    <LeaveApplicationForm onSubmit={handleNewLeaveApplication} />
+                  </Card>
+                </div>
+
+                {/* Leave Policy Overview Section */}
+                <div className="flex"> {/* Added flex */}
+                  <Card className="p-6 h-full flex flex-col justify-between flex-1"> {/* Added flex-1 */}
+                    <div>
+                      <h3 className="text-2xl font-bold mb-4 flex items-center">
+                        <BookOpen className="mr-2 h-6 w-6 text-primary" /> Leave Policy Overview
+                      </h3>
+                      <p className="text-muted-foreground mb-4">
+                        Familiarize yourself with Inventure's comprehensive leave policies. Understanding these guidelines
+                        will help you plan your time off effectively.
+                      </p>
+                      <ul className="space-y-3 text-sm text-foreground/80">
+                        <li className="flex items-start">
+                          <span>
+                            <strong>Annual Leave:</strong> Employees are entitled to 20 days of annual leave per year,
+                            accrued monthly.
+                          </span>
+                        </li>
+                        <li className="flex items-start">
+                          <span>
+                            <strong>Sick Leave:</strong> A maximum of 15 days of paid sick leave can be taken annually,
+                            requiring a medical certificate for absences over 2 days.
+                          </span>
+                        </li>
+                        <li className="flex items-start">
+                          <span>
+                            <strong>Maternity/Paternity Leave:</strong> Comprehensive policies for new parents are available.
+                            Please refer to the detailed policy document.
+                          </span>
+                        </li>
+                        <li className="flex items-start">
+                          <span>
+                            <strong>Special Leave:</strong> Provisions for bereavement, marriage, and other special circumstances.
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
+                    <CardFooter className="px-0 pb-0 mt-6 flex justify-end">
+                      <Button variant="outline" className="text-[#01739d] border-[#01739d] hover:bg-[#01739d]/10">
+                        View Full Policy Document
+                      </Button>
+                    </CardFooter>
+                  </Card>
                 </div>
               </div>
-            )}
-            <h3 className="text-xl font-bold mb-4">Apply for New Leave</h3>
-            <LeaveApplicationForm onSubmit={handleNewLeaveApplication} />
-          </TabsContent>
+
+              {/* Display submitted leave applications */}
+              {leaveApplications.length > 0 && (
+                <div className="mt-12">
+                  <h3 className="text-2xl font-bold mb-6 flex items-center">
+                    <Calendar className="mr-2 h-6 w-6 text-primary" /> Your Recent Leave Applications
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {leaveApplications.map((app) => (
+                      <LeaveCard
+                        key={app.id}
+                        leave={app}
+                        currentUserUid={currentUserUid}
+                        onEdit={handleEditLeave}
+                        onDelete={handleDeleteLeaveClick}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {leaveApplications.length === 0 && (
+                  <div className="mt-12 text-center py-12 border border-dashed rounded-lg bg-background/50">
+                      <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium mb-2">No leave applications submitted yet</h3>
+                      <p className="text-muted-foreground">
+                          Your submitted leave requests will appear here.
+                      </p>
+                  </div>
+              )}
+            </TabsContent>
+          )}
         </Tabs>
       </main>
 
@@ -1523,6 +1977,57 @@ export default function EmployeeDashboard() {
               setDeleteLeaveId(null);
             }}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteLeave} className="bg-destructive hover:bg-destructive-dark">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Add Sales Entry Dialog */}
+      <Dialog open={isAddSalesDialogOpen} onOpenChange={setIsAddSalesDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Add New Sales Entry</DialogTitle>
+            <DialogDescription>Fill in the details for the new sales entry.</DialogDescription>
+          </DialogHeader>
+          <SalesForm onSubmit={handleAddSalesEntry} onCancel={() => setIsAddSalesDialogOpen(false)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Sales Entry Dialog */}
+      {editingSalesEntry && (
+        <Dialog open={isEditSalesDialogOpen} onOpenChange={setIsEditSalesDialogOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Edit Sales Entry</DialogTitle>
+              <DialogDescription>Make changes to this sales entry. Click save when you're done.</DialogDescription>
+            </DialogHeader>
+            <SalesForm
+              initialData={editingSalesEntry}
+              onSubmit={handleSaveSalesChanges}
+              onCancel={() => {
+                setIsEditSalesDialogOpen(false);
+                setEditingSalesEntry(null);
+              }}
+              isEdit={true}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Delete Sales Entry Confirmation Dialog */}
+      <AlertDialog open={isDeleteSalesDialogOpen} onOpenChange={setIsDeleteSalesDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this sales entry.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setIsDeleteSalesDialogOpen(false);
+              setDeleteSalesEntryId(null);
+            }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteSales} className="bg-destructive hover:bg-destructive-dark">Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

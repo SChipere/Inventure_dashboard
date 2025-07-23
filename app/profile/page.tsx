@@ -343,7 +343,7 @@ export default function ProfilePage() {
         }
       } catch (error) {
         console.error("Error checking email:", error)
-        setEmailAvailable(null)
+        return false;
       } finally {
         setIsCheckingEmail(false)
       }
@@ -483,10 +483,68 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-background/95">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
-          <h2 className="text-xl font-medium">Loading profile...</h2>
+      <div className="min-h-screen flex flex-col items-center bg-gradient-to-br from-background to-background/95 p-6">
+        {/* Header Skeleton */}
+        <header className="w-full max-w-4xl border-b p-4 mb-6">
+          <div className="flex items-center justify-between animate-pulse">
+            <div className="flex items-center gap-4">
+              <div className="h-10 w-10 bg-muted rounded-md"></div>
+              <div>
+                <div className="h-6 bg-muted rounded w-48 mb-2"></div>
+                <div className="h-4 bg-muted rounded w-64"></div>
+              </div>
+            </div>
+            <div className="h-12 w-12 bg-muted rounded-full"></div>
+          </div>
+        </header>
+
+        <div className="max-w-4xl mx-auto w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Sidebar Skeleton */}
+          <div className="lg:col-span-1">
+            <Card className="animate-pulse">
+              <CardHeader className="text-center">
+                <div className="h-20 w-20 mx-auto mb-4 bg-muted rounded-full"></div>
+                <div className="h-6 bg-muted rounded w-3/4 mx-auto mb-2"></div>
+                <div className="h-4 bg-muted rounded w-1/2 mx-auto"></div>
+                <div className="flex justify-center gap-2 mt-4">
+                  <div className="h-6 w-20 bg-muted rounded-full"></div>
+                  <div className="h-6 w-24 bg-muted rounded-full"></div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="h-4 bg-muted rounded w-5/6"></div>
+                <div className="h-4 bg-muted rounded w-4/5"></div>
+              </CardContent>
+            </Card>
+
+            <Card className="mt-4 animate-pulse">
+              <CardContent className="p-0 space-y-1">
+                <div className="h-10 bg-muted rounded w-full"></div>
+                <div className="h-10 bg-muted rounded w-full"></div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main Content Skeleton */}
+          <div className="lg:col-span-2">
+            <Card className="animate-pulse">
+              <CardHeader>
+                <div className="h-6 bg-muted rounded w-2/3 mb-2"></div>
+                <div className="h-4 bg-muted rounded w-full"></div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <div className="h-4 bg-muted rounded w-1/4"></div>
+                  <div className="h-10 bg-muted rounded w-full"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-4 bg-muted rounded w-1/4"></div>
+                  <div className="h-10 bg-muted rounded w-full"></div>
+                </div>
+                <div className="h-8 bg-muted rounded w-full"></div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     )
@@ -512,10 +570,7 @@ export default function ProfilePage() {
               <p className="text-muted-foreground">Manage your account settings and preferences</p>
             </div>
           </div>
-          <Avatar className="h-12 w-12">
-            <AvatarImage src="/placeholder.svg?height=48&width=48" />
-            <AvatarFallback className="text-lg">{user.username.charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
+          {/* Profile icon removed from here */}
         </div>
       </header>
 
@@ -538,12 +593,10 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Sidebar */}
           <div className="lg:col-span-1">
-            <Card>
+            <Card className="shadow-sm hover:shadow-md transition-shadow duration-200">
               <CardHeader className="text-center">
-                <Avatar className="h-20 w-20 mx-auto mb-4">
-                  <AvatarImage src="/placeholder.svg?height=80&width=80" />
-                  <AvatarFallback className="text-2xl">{user.username.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
+                {/* Replaced Avatar with User icon */}
+                <User className="h-20 w-20 mx-auto mb-4 text-primary" />
                 <CardTitle className="text-xl truncate">{user.username}</CardTitle> {/* Added truncate */}
                 <p className="text-muted-foreground truncate">{user.email}</p> {/* Added truncate */}
                 <div className="flex justify-center gap-2 mt-2">
@@ -571,7 +624,7 @@ export default function ProfilePage() {
             </Card>
 
             {/* Navigation */}
-            <Card className="mt-4">
+            <Card className="mt-4 shadow-sm hover:shadow-md transition-shadow duration-200">
               <CardContent className="p-0">
                 <nav className="space-y-1">
                   <Button
@@ -598,7 +651,7 @@ export default function ProfilePage() {
           {/* Main Content */}
           <div className="lg:col-span-2">
             {activeSection === "profile" && (
-              <Card>
+              <Card key="profile-section" className="shadow-sm hover:shadow-md transition-shadow duration-200 opacity-100 transition-opacity duration-300 ease-in-out">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <User className="h-5 w-5" />
@@ -667,13 +720,13 @@ export default function ProfilePage() {
 
                     <Button
                       type="submit"
+                      className="w-full bg-[#01739d] hover:bg-[#01739d]/90" // Changed color
                       disabled={
                         isSaving ||
                         (username === user.username && email === user.email) ||
                         (username !== user.username && usernameAvailable !== true) ||
                         (email !== user.email && emailAvailable !== true)
                       }
-                      className="w-full"
                     >
                       {isSaving ? (
                         <>
@@ -693,7 +746,7 @@ export default function ProfilePage() {
             )}
 
             {activeSection === "password" && (
-              <Card>
+              <Card key="password-section" className="shadow-sm hover:shadow-md transition-shadow duration-200 opacity-100 transition-opacity duration-300 ease-in-out">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Lock className="h-5 w-5" />
@@ -837,6 +890,7 @@ export default function ProfilePage() {
 
                     <Button
                       type="submit"
+                      className="w-full bg-[#01739d] hover:bg-[#01739d]/90" // Changed color
                       disabled={
                         isSaving ||
                         !currentPassword ||
@@ -845,7 +899,6 @@ export default function ProfilePage() {
                         newPassword !== confirmPassword ||
                         !passwordValidation.isValid
                       }
-                      className="w-full"
                     >
                       {isSaving ? (
                         <>
@@ -869,4 +922,3 @@ export default function ProfilePage() {
     </div>
   )
 }
-
